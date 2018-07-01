@@ -38,6 +38,7 @@
 (defvar.ps+ *depth*
     (convert-to-layered-hash
      (:field 0
+      :ground 2
       :shinobi 10)))
 
 (defmacro.ps+ get-depth (&rest keys)

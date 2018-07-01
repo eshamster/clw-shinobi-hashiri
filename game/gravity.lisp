@@ -10,13 +10,18 @@
 
            :start-gravity
            :stop-gravity)
+  (:import-from :clw-shinobi-hashiri/game/ground
+                :get-ground-height)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth))
 (in-package :clw-shinobi-hashiri/game/gravity)
 
 (defstruct.ps+ (gravity (:include ecs-component))
-    (on-p t))
+    (on-p t)
+  (fn-get-center-x (lambda (entity) (declare (ignore entity)) 0))
+  (fn-get-bottom (lambda (entity) (declare (ignore entity)) 0))
+  (fn-get-width (lambda (entity) (declare (ignore entity)) 0)))
 
 (defun.ps+ set-gravity-enable (entity value)
   (with-ecs-components (gravity) entity
@@ -28,6 +33,19 @@
 (defun.ps+ stop-gravity (entity)
   (set-gravity-enable entity nil))
 
+(defun.ps+ stop-if-on-ground (entity gravity speed-2d)
+  (with-slots (fn-get-center-x fn-get-bottom fn-get-width) gravity
+    (let ((ground-height (get-ground-height
+                          (funcall fn-get-center-x entity)
+                          (funcall fn-get-width entity)))
+          (bottom (funcall fn-get-bottom entity)))
+      (when (< bottom ground-height)
+        (setf (speed-2d-y speed-2d) 0)
+        (with-ecs-components (point-2d) entity
+          (setf (point-2d-y point-2d)
+                (+ (point-2d-y point-2d)
+                   (- ground-height bottom))))))))
+
 (defun.ps+ process-gravity (entity)
   (with-ecs-components (gravity speed-2d) entity
     (when (gravity-on-p gravity)
@@ -37,7 +55,8 @@
         (decf speed-y accell)
         (when (< speed-y (* -1 max-speed))
           (setf speed-y (* -1 max-speed)))
-        (setf (speed-2d-y speed-2d) speed-y)))))
+        (setf (speed-2d-y speed-2d) speed-y))
+      (stop-if-on-ground entity gravity speed-2d))))
 
 (defstruct.ps+
     (gravity-system

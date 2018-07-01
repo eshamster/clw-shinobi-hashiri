@@ -3,6 +3,8 @@
         :ps-experiment
         :cl-ps-ecs
         :cl-web-2d-game)
+  (:import-from :clw-shinobi-hashiri/game/ground
+                :init-ground)
   (:import-from :clw-shinobi-hashiri/game/shinobi
                 :init-shinobi)
   (:import-from :clw-shinobi-hashiri/game/parameter
@@ -24,7 +26,8 @@
                                                 :height (get-param :field :height)
                                                 :color #xeeeeee)
                         :depth (get-depth :field)))
-        (add-ecs-entity background parent)))
+        (add-ecs-entity background parent)
+        (init-ground parent)))
     t)
   :process
   (lambda (_this)
