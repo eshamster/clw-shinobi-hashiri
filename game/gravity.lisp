@@ -21,7 +21,8 @@
     (on-p t)
   (fn-get-center-x (lambda (entity) (declare (ignore entity)) 0))
   (fn-get-bottom (lambda (entity) (declare (ignore entity)) 0))
-  (fn-get-width (lambda (entity) (declare (ignore entity)) 0)))
+  (fn-get-width (lambda (entity) (declare (ignore entity)) 0))
+  (fn-on-ground (lambda (entity) (declare (ignore entity)))))
 
 (defun.ps+ set-gravity-enable (entity value)
   (with-ecs-components (gravity) entity
@@ -34,7 +35,7 @@
   (set-gravity-enable entity nil))
 
 (defun.ps+ stop-if-on-ground (entity gravity speed-2d)
-  (with-slots (fn-get-center-x fn-get-bottom fn-get-width) gravity
+  (with-slots (fn-get-center-x fn-get-bottom fn-get-width fn-on-ground) gravity
     (let ((ground-height (get-ground-height
                           (funcall fn-get-center-x entity)
                           (funcall fn-get-width entity)))
@@ -44,7 +45,9 @@
         (with-ecs-components (point-2d) entity
           (setf (point-2d-y point-2d)
                 (+ (point-2d-y point-2d)
-                   (- ground-height bottom))))))))
+                   (- ground-height bottom))))
+        ;; XXX: Should not call hook in sequential frames
+        (funcall fn-on-ground entity)))))
 
 (defun.ps+ process-gravity (entity)
   (with-ecs-components (gravity speed-2d) entity
