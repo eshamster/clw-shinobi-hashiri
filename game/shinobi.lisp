@@ -6,6 +6,8 @@
   (:export :init-shinobi)
   (:import-from :clw-shinobi-hashiri/game/gravity
                 :make-gravity)
+  (:import-from :clw-shinobi-hashiri/game/ground
+                :get-ground-height)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth))
@@ -43,13 +45,26 @@
                                 (make-falling-state :shinobi shinobi))))))))
   (duration (get-param :shinobi :jump :max-time)))
 
+(defun.ps+ land-immediately (shinobi)
+  (let* ((center (get-ecs-component 'point-2d shinobi))
+         (ground-height (get-ground-height (point-2d-x center)
+                                           (get-entity-param shinobi :width))))
+    (setf (point-2d-y center)
+          (+ ground-height (* 1/2 (get-entity-param shinobi :height))))
+    (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+          0)))
+
 (defstruct.ps+
     (falling-state
      (:include shinobi-state
                (process (lambda (state)
                           (let ((shinobi (shinobi-state-shinobi state)))
-                            (when (get-entity-param shinobi :on-ground-p)
-                              (make-on-ground-state :shinobi shinobi))))))))
+                            (cond ((get-entity-param shinobi :on-ground-p)
+                                   (make-on-ground-state :shinobi shinobi))
+                                  ((is-key-down-now *jump-key*)
+                                   (land-immediately shinobi)
+                                   (set-entity-param shinobi :on-ground-p t)
+                                   (make-on-ground-state :shinobi shinobi)))))))))
 
 (defstruct.ps+
     (on-ground-state
@@ -106,5 +121,7 @@
        (init-entity-params :jump-state-manager
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down
-                           :on-ground-p nil)))
+                           :on-ground-p nil
+                           :width width
+                           :height height)))
     (add-ecs-entity shinobi parent)))
