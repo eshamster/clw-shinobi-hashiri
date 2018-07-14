@@ -10,19 +10,72 @@
                 :get-depth))
 (in-package :clw-shinobi-hashiri/game/ground)
 
-(defvar.ps+ *dummy-height* 60)
+;; TODO: Prevent overflow by scroll
 
-(defun.ps+ get-ground-height (center-x width)
-  (declare (ignore center-x width))
-  *dummy-height*)
+(defvar.ps+ *dummy-scroll-speed* 1)
+
+(defun.ps+ find-ground ()
+  (find-a-entity-by-tag :ground))
+
+(defun.ps+ get-ground-height (center-x width &optional (ground (find-ground)))
+  (check-entity-tags ground :ground)
+  (let ((min-x (- center-x (* 1/2 width)))
+        (max-x (+ center-x (* 1/2 width)))
+        (left (point-2d-x (get-ecs-component 'point-2d ground)))
+        (result #ly-1000))
+    (dolist (pair (get-entity-param ground :stage))
+      (let ((height (car pair))
+            (right (+ left (cadr pair))))
+        (when (> left max-x)
+          (return-from get-ground-height result))
+        (when (and (> right min-x)
+                   (>= height 0)
+                   (> height result))
+          (setf result height))
+        (setf left right)))
+    result))
+
+(defun.ps+ scroll-ground (ground)
+  (check-entity-tags ground :ground)
+  (with-ecs-components (point-2d) ground
+    (incf (point-2d-x point-2d)
+          (* -1 *dummy-scroll-speed*))))
+
+;; Definition of stage
+;; ((height distance) (height distance) ...)
+(defmacro.ps+ create-stage (&rest def)
+  `(list ,@(mapcar (lambda (pair)
+                     `(list ,(car pair) ,(cadr pair)))
+                   def)))
+
+(defun.ps+ interpret-stage (ground stage)
+  ;; TODO: Incrementaly add (and delete) models
+  (let ((x 0))
+    (dolist (pair stage)
+      (let ((height (car pair))
+            (dist (cadr pair)))
+        (add-ecs-component
+         (make-model-2d :model (make-solid-rect :width dist
+                                                :height height
+                                                :color #x000000)
+                        :depth (get-depth :ground)
+                        :offset (make-point-2d :x x))
+         ground)
+        (incf x dist))))
+  (set-entity-param ground :stage stage))
 
 (defun.ps+ init-ground (parent)
   (let ((ground (make-ecs-entity)))
+    (add-entity-tag ground :ground)
     (add-ecs-component-list
      ground
      (make-point-2d)
-     (make-model-2d :model (make-solid-rect :width (get-param :field :width)
-                                            :height *dummy-height*
-                                            :color #x000000)
-                    :depth (get-depth :ground)))
+     (make-script-2d :func (lambda (entity)
+                             (scroll-ground entity)))
+     (init-entity-params))
+    (interpret-stage
+     ground
+     (create-stage (#ly50 #lx500)
+                   (#ly-1 #lx80)
+                   (#ly80 #lx300)))
     (add-ecs-entity ground parent)))
