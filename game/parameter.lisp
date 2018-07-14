@@ -31,7 +31,7 @@
    (:field (:width field-width :height field-height)
     :shinobi (:width #ly40 :height #ly40
               :jump (:speed 4 :max-time 20))
-    :gravity (:accell #ly0.2 :max-speed 20))))
+    :gravity (:accell #ly0.4 :max-speed 20))))
 
 (defmacro.ps+ get-param (&rest keys)
   `(get-layered-hash *params* ,@keys))
