@@ -5,6 +5,8 @@
         :cl-web-2d-game)
   (:export :gravity
            :make-gravity
+           :gravity-decrease-rate
+
            :gravity-system
            :make-gravity-system
 
@@ -19,6 +21,7 @@
 
 (defstruct.ps+ (gravity (:include ecs-component))
     (on-p t)
+  (decrease-rate 1.0)
   (fn-get-center-x (lambda (entity) (declare (ignore entity)) 0))
   (fn-get-bottom (lambda (entity) (declare (ignore entity)) 0))
   (fn-get-width (lambda (entity) (declare (ignore entity)) 0))
@@ -55,7 +58,8 @@
       (let ((accell (get-param :gravity :accell))
             (max-speed (get-param :gravity :max-speed))
             (speed-y (speed-2d-y speed-2d)))
-        (decf speed-y accell)
+        (decf speed-y (* accell
+                         (gravity-decrease-rate gravity)))
         (when (< speed-y (* -1 max-speed))
           (setf speed-y (* -1 max-speed)))
         (setf (speed-2d-y speed-2d) speed-y))

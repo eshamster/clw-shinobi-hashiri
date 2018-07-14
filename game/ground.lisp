@@ -75,7 +75,7 @@
      (init-entity-params))
     (interpret-stage
      ground
-     (create-stage (#ly50 #lx500)
+     (create-stage (#ly50 #lx300)
                    (#ly-1 #lx80)
                    (#ly80 #lx300)))
     (add-ecs-entity ground parent)))

@@ -5,7 +5,9 @@
         :cl-web-2d-game)
   (:export :init-shinobi)
   (:import-from :clw-shinobi-hashiri/game/gravity
-                :make-gravity)
+                :gravity
+                :make-gravity
+                :gravity-decrease-rate)
   (:import-from :clw-shinobi-hashiri/game/ground
                 :get-ground-height)
   (:import-from :clw-shinobi-hashiri/game/parameter
@@ -17,6 +19,11 @@
 
 (defun.ps+ find-shinobi ()
   (find-a-entity-by-tag :shinobi))
+
+(defun.ps+ get-my-ground-height (shinobi)
+  (check-entity-tags shinobi :shinobi)
+  (get-ground-height (point-2d-x (get-ecs-component 'point-2d shinobi))
+                     (get-entity-param shinobi :width)))
 
 ;; --- jump --- ;;
 
@@ -47,24 +54,53 @@
 
 (defun.ps+ land-immediately (shinobi)
   (let* ((center (get-ecs-component 'point-2d shinobi))
-         (ground-height (get-ground-height (point-2d-x center)
-                                           (get-entity-param shinobi :width))))
+         (ground-height (get-my-ground-height shinobi)))
     (setf (point-2d-y center)
           (+ ground-height (* 1/2 (get-entity-param shinobi :height))))
     (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
           0)))
 
+(defun.ps+ process-in-falling-process (state)
+  (let ((shinobi (shinobi-state-shinobi state)))
+    (cond ((get-entity-param shinobi :on-ground-p)
+           (make-on-ground-state :shinobi shinobi))
+          ((is-key-down-now *jump-key*)
+           (if (>= (get-my-ground-height shinobi) 0)
+               (progn
+                 (land-immediately shinobi)
+                 (set-entity-param shinobi :on-ground-p t)
+                 (make-on-ground-state :shinobi shinobi))
+               (progn
+                 (make-gliding-state :shinobi shinobi)))))))
+
 (defstruct.ps+
     (falling-state
      (:include shinobi-state
-               (process (lambda (state)
-                          (let ((shinobi (shinobi-state-shinobi state)))
-                            (cond ((get-entity-param shinobi :on-ground-p)
-                                   (make-on-ground-state :shinobi shinobi))
-                                  ((is-key-down-now *jump-key*)
-                                   (land-immediately shinobi)
-                                   (set-entity-param shinobi :on-ground-p t)
-                                   (make-on-ground-state :shinobi shinobi)))))))))
+               (process #'process-in-falling-process))))
+
+(defun.ps+ process-in-gliding (state)
+  (let ((shinobi (shinobi-state-shinobi state)))
+    (cond ((get-entity-param shinobi :on-ground-p)
+           (make-on-ground-state :shinobi shinobi))
+          ((is-key-up-now *jump-key*)
+           (make-falling-state :shinobi shinobi)))))
+
+(defun.ps+ setf-gravity-rate (state rate)
+  (check-type state shinobi-state)
+  (let ((shinobi (shinobi-state-shinobi state)))
+    (setf (gravity-decrease-rate (get-ecs-component 'gravity shinobi))
+          rate)))
+
+;; TODO: Decrease speed (go back) according to scroll speed
+(defstruct.ps+
+    (gliding-state
+     (:include shinobi-state
+               (start-process (lambda (state)
+                                (setf-gravity-rate state
+                                                   (get-param :shinobi :glide :gravity-rate))))
+               (process #'process-in-gliding)
+               (end-process (lambda (state)
+                              (setf-gravity-rate state 1))))))
 
 (defstruct.ps+
     (on-ground-state
@@ -84,7 +120,8 @@
                   (get-entity-param shinobi :jump-state-manager))
         (jumping-state "jumping")
         (falling-state "falling")
-        (on-ground-state "on-ground")))))
+        (on-ground-state "on-ground")
+        (gliding-state "gliding")))))
 
 ;; --- main --- ;;
 
