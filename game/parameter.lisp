@@ -31,6 +31,7 @@
    (:field (:width field-width :height field-height)
     :shinobi (:width #ly40 :height #ly40
               :jump (:speed 4 :max-time 20)
+              :on-ground (:default-x #lx200 :return-speed #lx3)
               :glide (:gravity-rate 0.1)
               :climb-jump (:min-speed #lx3 :max-speed #lx5 :duration 20))
     :gravity (:accell #ly0.4 :max-speed 20))))

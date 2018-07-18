@@ -111,6 +111,13 @@
     (on-ground-state
      (:include shinobi-state
                (process (lambda (state)
+                          (let* ((shinobi (shinobi-state-shinobi state))
+                                 (default-x (get-param :shinobi :on-ground :default-x))
+                                 (speed (get-param :shinobi :on-ground :return-speed))
+                                 (point (get-ecs-component 'point-2d shinobi)))
+                            (symbol-macrolet ((x (point-2d-x point)))
+                              (when (< x default-x)
+                                (setf x (min default-x (+ x speed))))))
                           (when (is-key-down-now *jump-key*)
                             (make-jumping-state :shinobi (shinobi-state-shinobi state))))))))
 
@@ -167,6 +174,8 @@
                                  (getf (get-nearest-wall shinobi #lx1) :height)
                                  nil))
                             (cond ((null (get-nearest-wall shinobi #lx1))
+                                   (incf (point-2d-x (get-ecs-component 'point-2d shinobi))
+                                         (get-param :shinobi :on-ground :return-speed))
                                    (make-falling-state :shinobi shinobi))
                                   ((is-key-up-now *jump-key*)
                                    (make-holding-wall-state :shinobi shinobi))))))
@@ -243,7 +252,8 @@
              (get-ecs-component 'point-2d entity)))
       (add-ecs-component-list
        shinobi
-       (make-point-2d :x 100 :y 100)
+       (make-point-2d :x (get-param :shinobi :on-ground :default-x)
+                      :y 100)
        (make-gravity :fn-get-width (lambda (entity)
                                      (declare (ignore entity))
                                      width)
