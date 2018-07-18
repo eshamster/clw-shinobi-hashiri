@@ -117,9 +117,12 @@
                                  (point (get-ecs-component 'point-2d shinobi)))
                             (symbol-macrolet ((x (point-2d-x point)))
                               (when (< x default-x)
-                                (setf x (min default-x (+ x speed))))))
-                          (when (is-key-down-now *jump-key*)
-                            (make-jumping-state :shinobi (shinobi-state-shinobi state))))))))
+                                (setf x (min default-x (+ x speed)))))
+                            (cond ((is-key-down-now *jump-key*)
+                                   (make-jumping-state :shinobi shinobi))
+                                  ((> (get-bottom shinobi) (get-my-ground-height shinobi))
+                                   (set-entity-param shinobi :on-ground-p nil)
+                                   (make-falling-state :shinobi shinobi)))))))))
 
 ;; - climb states - ;;
 
