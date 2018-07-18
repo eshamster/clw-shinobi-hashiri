@@ -216,6 +216,10 @@
 
 (defun.ps+ get-next-state (shinobi)
   (check-entity-tags shinobi :shinobi)
+  (game-state-manager-next-state (get-entity-param shinobi :jump-state-manager)))
+
+(defun.ps+ get-current-state (shinobi)
+  (check-entity-tags shinobi :shinobi)
   (game-state-manager-current-state (get-entity-param shinobi :jump-state-manager)))
 
 (defun.ps+ process-jump-state (shinobi)
@@ -226,7 +230,7 @@
     (when (and nearest-wall
                (> (getf nearest-wall :height) (get-bottom shinobi))
                (null (game-state-manager-next-state state-manager))
-               (not (typep (get-next-state shinobi) 'climb-state)))
+               (not (typep (get-current-state shinobi) 'climb-state)))
       (interrupt-game-state
        (make-holding-wall-state :shinobi shinobi)
        state-manager))
