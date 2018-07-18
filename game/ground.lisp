@@ -23,7 +23,7 @@ If the entity is deleted, the func is also deleted"
 
 ;; --- --- ;;
 
-(defvar.ps+ *dummy-scroll-speed* 1)
+(defvar.ps+ *dummy-scroll-speed* 1.5)
 
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
@@ -99,6 +99,7 @@ If the entity is deleted, the func is also deleted"
      ground
      (create-stage (#ly50 #lx300)
                    (#ly-1 #lx80)
-                   (#ly80 #lx300)))
+                   (#ly80 #lx100)
+                   (#ly200 #lx 200)))
     (add-ecs-entity ground parent)
     ground))

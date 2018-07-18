@@ -7,9 +7,12 @@
   (:import-from :clw-shinobi-hashiri/game/gravity
                 :gravity
                 :make-gravity
-                :gravity-decrease-rate)
+                :gravity-decrease-rate
+                :start-gravity
+                :stop-gravity)
   (:import-from :clw-shinobi-hashiri/game/ground
-                :get-ground-height)
+                :get-ground-height
+                :add-on-ground-scroll)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth))
@@ -20,10 +23,12 @@
 (defun.ps+ find-shinobi ()
   (find-a-entity-by-tag :shinobi))
 
-(defun.ps+ get-my-ground-height (shinobi)
+(defun.ps+ get-my-ground-height (shinobi &optional (extra-dist 0))
   (check-entity-tags shinobi :shinobi)
-  (get-ground-height (point-2d-x (get-ecs-component 'point-2d shinobi))
-                     (get-entity-param shinobi :width)))
+  (get-ground-height (+ (point-2d-x (get-ecs-component 'point-2d shinobi))
+                        (* 1/2 extra-dist))
+                     (+ (get-entity-param shinobi :width)
+                        extra-dist)))
 
 ;; --- jump --- ;;
 
@@ -109,9 +114,31 @@
                           (when (is-key-down-now *jump-key*)
                             (make-jumping-state :shinobi (shinobi-state-shinobi state))))))))
 
-(defun.ps+ process-jump-state (shinobi)
-  (check-entity-tags shinobi :shinobi)
-  (process-game-state (get-entity-param shinobi :jump-state-manager)))
+;; - climb states - ;;
+
+(defstruct.ps+ (climb-state (:include shinobi-state)))
+
+(defstruct.ps+
+    (holding-wall-state
+     (:include climb-state
+               (start-process (lambda (state)
+                                (let ((shinobi (shinobi-state-shinobi state)))
+                                  (set-entity-param shinobi :scroll-p t)
+                                  (stop-gravity shinobi)
+                                  (with-ecs-components (speed-2d point-2d) shinobi
+                                    (setf (speed-2d-y speed-2d) 0)
+                                    (symbol-macrolet ((x (point-2d-x point-2d)))
+                                      (setf x (+ x (getf (get-nearest-wall shinobi #lx100
+                                                                           :error-if-not-found t)
+                                                         :dist))))))
+                                t))
+               (end-process (lambda (state)
+                              (let ((shinobi (shinobi-state-shinobi state)))
+                                (set-entity-param shinobi :scroll-p nil)
+                                (start-gravity shinobi))
+                              t)))))
+
+;; - state utils - ;;
 
 (defun.ps+ debug-print-state (shinobi)
   (add-to-monitoring-log
@@ -121,11 +148,49 @@
         (jumping-state "jumping")
         (falling-state "falling")
         (on-ground-state "on-ground")
-        (gliding-state "gliding")))))
+        (gliding-state "gliding")
+        (holding-wall-state "holding-wall")))))
+
+(defun.ps+ get-nearest-wall (shinobi max-distance &key (error-if-not-found nil) (tolerance #lx0.01))
+  (check-entity-tags shinobi :shinobi)
+  (let ((current-height (get-my-ground-height shinobi)))
+    (unless (> (get-my-ground-height shinobi max-distance) current-height)
+      (if error-if-not-found
+          (error "Wall is not found in near.")
+          (return-from get-nearest-wall)))
+    (labels ((rec (current-min-dist current-max-dist)
+               (if (< (- current-max-dist current-min-dist) tolerance)
+                   (list :dist current-min-dist
+                         :height (get-my-ground-height shinobi current-max-dist))
+                   (let ((mid (/ (+ current-min-dist current-max-dist) 2)))
+                     (if (> (get-my-ground-height shinobi mid) current-height)
+                         (rec current-min-dist mid)
+                         (rec mid current-max-dist))))))
+      (rec 0 max-distance))))
+
+(defun.ps+ process-jump-state (shinobi)
+  (check-entity-tags shinobi :shinobi)
+  (let ((state-manager (get-entity-param shinobi :jump-state-manager))
+        ;; XXX: Search length should be decided according to scroll speed
+        (nearest-wall (get-nearest-wall shinobi #lx10)))
+    (when (and nearest-wall
+               (> (getf nearest-wall :height) (get-bottom shinobi))
+               (null (game-state-manager-next-state state-manager))
+               (not (typep (game-state-manager-current-state state-manager)
+                           'climb-state)))
+      (interrupt-game-state
+       (make-holding-wall-state :shinobi shinobi)
+       state-manager))
+    (process-game-state state-manager)))
+
+(defun.ps+ get-bottom (shinobi)
+  (+ (point-2d-y (get-ecs-component 'point-2d shinobi))
+     (* -1/2 (get-entity-param shinobi :height))))
 
 ;; --- main --- ;;
 
-(defun.ps+ init-shinobi (parent)
+(defun.ps+ init-shinobi (parent ground)
+  (check-entity-tags ground :ground)
   (let ((shinobi (make-ecs-entity))
         (width (get-param :shinobi :width))
         (height (get-param :shinobi :height)))
@@ -140,9 +205,7 @@
                                      width)
                      :fn-get-center-x (lambda (entity)
                                         (point-2d-x (get-point entity)))
-                     :fn-get-bottom (lambda (entity)
-                                      (+ (point-2d-y (get-point entity))
-                                         (* -1/2 height)))
+                     :fn-get-bottom #'get-bottom
                      :fn-on-ground (lambda (entity)
                                      (set-entity-param entity :on-ground-p t)))
        (make-speed-2d :y 0)
@@ -159,6 +222,15 @@
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down
                            :on-ground-p nil
+                           :scroll-p nil
                            :width width
                            :height height)))
+    (add-on-ground-scroll
+     shinobi
+     (lambda (entity scroll-speed)
+       (add-to-event-log (get-entity-param entity :scroll-p))
+       (when (get-entity-param entity :scroll-p)
+         (symbol-macrolet ((x (point-2d-x (get-ecs-component 'point-2d entity))))
+           (setf x (- x scroll-speed)))))
+     ground)
     (add-ecs-entity shinobi parent)))

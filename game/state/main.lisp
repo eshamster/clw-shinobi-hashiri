@@ -17,7 +17,6 @@
   (lambda (_this)
     (let ((parent (slot-value _this 'parent)))
       (add-ecs-entity parent)
-      (init-shinobi parent)
       (let ((background (make-ecs-entity)))
         (add-ecs-component-list
          background
@@ -27,7 +26,8 @@
                                                 :color #xeeeeee)
                         :depth (get-depth :field)))
         (add-ecs-entity background parent)
-        (init-ground parent)))
+        (let ((ground (init-ground parent)))
+          (init-shinobi parent ground))))
     t)
   :process
   (lambda (_this)
