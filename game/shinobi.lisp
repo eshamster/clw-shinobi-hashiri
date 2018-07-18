@@ -169,10 +169,6 @@
                                 (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
                                       (lerp-scalar min-speed max-speed (/ time duration))))
                               (incf time))
-                            (add-to-monitoring-log
-                             (if (get-nearest-wall shinobi #lx1)
-                                 (getf (get-nearest-wall shinobi #lx1) :height)
-                                 nil))
                             (cond ((null (get-nearest-wall shinobi #lx1))
                                    (incf (point-2d-x (get-ecs-component 'point-2d shinobi))
                                          (get-param :shinobi :on-ground :return-speed))
