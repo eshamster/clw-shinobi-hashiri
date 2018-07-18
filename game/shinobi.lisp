@@ -132,11 +132,50 @@
                                                                            :error-if-not-found t)
                                                          :dist))))))
                                 t))
+               (process (lambda (state)
+                          (when (is-key-down-now *jump-key*)
+                            (let ((shinobi (shinobi-state-shinobi state)))
+                              (make-climb-jumping-state :shinobi shinobi)))))
                (end-process (lambda (state)
                               (let ((shinobi (shinobi-state-shinobi state)))
-                                (set-entity-param shinobi :scroll-p nil)
-                                (start-gravity shinobi))
+                                (when (not (typep (get-next-state shinobi) 'climb-state))
+                                  (set-entity-param shinobi :scroll-p nil)
+                                  (start-gravity shinobi)))
                               t)))))
+
+(defstruct.ps+
+    (climb-jumping-state
+     (:include climb-state
+               (start-process (lambda (state)
+                                (let ((shinobi (shinobi-state-shinobi state)))
+                                  (set-entity-param shinobi :scroll-p t)
+                                  (start-gravity shinobi))
+                                t))
+               (process (lambda (state)
+                          ;; XXX: Search length should be decided according to tolerance
+                          (let ((shinobi (shinobi-state-shinobi state))
+                                (duration (get-param :shinobi :climb-jump :duration))
+                                (min-speed (get-param :shinobi :climb-jump :min-speed))
+                                (max-speed (get-param :shinobi :climb-jump :max-speed)))
+                            (symbol-macrolet ((time (climb-jumping-state-time state)))
+                              (when (< time duration)
+                                (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+                                      (lerp-scalar min-speed max-speed (/ time duration))))
+                              (incf time))
+                            (add-to-monitoring-log
+                             (if (get-nearest-wall shinobi #lx1)
+                                 (getf (get-nearest-wall shinobi #lx1) :height)
+                                 nil))
+                            (cond ((null (get-nearest-wall shinobi #lx1))
+                                   (make-falling-state :shinobi shinobi))
+                                  ((is-key-up-now *jump-key*)
+                                   (make-holding-wall-state :shinobi shinobi))))))
+               (end-process (lambda (state)
+                              (let ((shinobi (shinobi-state-shinobi state)))
+                                (when (not (typep (get-next-state shinobi) 'climb-state))
+                                  (set-entity-param shinobi :scroll-p nil)))
+                              t))))
+    (time 0))
 
 ;; - state utils - ;;
 
@@ -149,24 +188,30 @@
         (falling-state "falling")
         (on-ground-state "on-ground")
         (gliding-state "gliding")
-        (holding-wall-state "holding-wall")))))
+        (holding-wall-state "holding-wall")
+        (climb-jumping-state "climb-jumping")))))
 
 (defun.ps+ get-nearest-wall (shinobi max-distance &key (error-if-not-found nil) (tolerance #lx0.01))
   (check-entity-tags shinobi :shinobi)
-  (let ((current-height (get-my-ground-height shinobi)))
-    (unless (> (get-my-ground-height shinobi max-distance) current-height)
-      (if error-if-not-found
-          (error "Wall is not found in near.")
-          (return-from get-nearest-wall)))
+  (unless (> (get-my-ground-height shinobi max-distance)
+             (get-bottom shinobi))
+    (if error-if-not-found
+        (error "Wall is not found in near.")
+        (return-from get-nearest-wall)))
+  (let ((current-ground-height (get-my-ground-height shinobi)))
     (labels ((rec (current-min-dist current-max-dist)
                (if (< (- current-max-dist current-min-dist) tolerance)
                    (list :dist current-min-dist
                          :height (get-my-ground-height shinobi current-max-dist))
                    (let ((mid (/ (+ current-min-dist current-max-dist) 2)))
-                     (if (> (get-my-ground-height shinobi mid) current-height)
+                     (if (> (get-my-ground-height shinobi mid) current-ground-height)
                          (rec current-min-dist mid)
                          (rec mid current-max-dist))))))
       (rec 0 max-distance))))
+
+(defun.ps+ get-next-state (shinobi)
+  (check-entity-tags shinobi :shinobi)
+  (game-state-manager-current-state (get-entity-param shinobi :jump-state-manager)))
 
 (defun.ps+ process-jump-state (shinobi)
   (check-entity-tags shinobi :shinobi)
@@ -176,8 +221,7 @@
     (when (and nearest-wall
                (> (getf nearest-wall :height) (get-bottom shinobi))
                (null (game-state-manager-next-state state-manager))
-               (not (typep (game-state-manager-current-state state-manager)
-                           'climb-state)))
+               (not (typep (get-next-state shinobi) 'climb-state)))
       (interrupt-game-state
        (make-holding-wall-state :shinobi shinobi)
        state-manager))
@@ -228,7 +272,6 @@
     (add-on-ground-scroll
      shinobi
      (lambda (entity scroll-speed)
-       (add-to-event-log (get-entity-param entity :scroll-p))
        (when (get-entity-param entity :scroll-p)
          (symbol-macrolet ((x (point-2d-x (get-ecs-component 'point-2d entity))))
            (setf x (- x scroll-speed)))))
