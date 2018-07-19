@@ -44,11 +44,13 @@
                           (funcall fn-get-width entity)))
           (bottom (funcall fn-get-bottom entity)))
       (when (< bottom ground-height)
-        (setf (speed-2d-y speed-2d) 0)
-        (with-ecs-components (point-2d) entity
-          (setf (point-2d-y point-2d)
-                (+ (point-2d-y point-2d)
-                   (- ground-height bottom))))
+        (let ((speed-y (speed-2d-y speed-2d)))
+          (setf (speed-2d-y speed-2d) 0)
+          (with-ecs-components (point-2d) entity
+            (setf (point-2d-y point-2d)
+                  (+ (point-2d-y point-2d)
+                     (min (* -1 speed-y)
+                          (- ground-height bottom))))))
         ;; XXX: Should not call hook in sequential frames
         (funcall fn-on-ground entity)))))
 
