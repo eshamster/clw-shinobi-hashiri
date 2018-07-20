@@ -274,7 +274,10 @@
                                              :y (* -1/2 height)))
        (make-script-2d :func (lambda (entity)
                                (process-jump-state entity)
-                               (debug-print-state entity)))
+                               (debug-print-state entity)
+                               (with-ecs-components (point-2d) entity
+                                 (add-to-monitoring-log (+ "x: " (point-2d-x point-2d)))
+                                 (add-to-monitoring-log (+ "y: " (point-2d-y point-2d))))))
        (init-entity-params :jump-state-manager
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down
