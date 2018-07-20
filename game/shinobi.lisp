@@ -52,9 +52,10 @@
                                   (get-param :shinobi :jump :speed))
                             (symbol-macrolet ((duration (jumping-state-duration state)))
                               (decf duration)
-                              (when (or (<= duration 0)
-                                        (is-key-up-now *jump-key*))
-                                (make-falling-state :shinobi shinobi))))))))
+                              (cond ((is-key-up-now *jump-key*)
+                                     (make-falling-state :shinobi shinobi))
+                                    ((<= duration 0)
+                                     (make-gliding-state :shinobi shinobi)))))))))
   (duration (get-param :shinobi :jump :max-time)))
 
 (defun.ps+ land-immediately (shinobi)
