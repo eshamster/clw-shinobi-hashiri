@@ -138,7 +138,7 @@
                                   (with-ecs-components (speed-2d point-2d) shinobi
                                     (setf (speed-2d-y speed-2d) 0)
                                     (symbol-macrolet ((x (point-2d-x point-2d)))
-                                      (setf x (+ x (getf (get-nearest-wall shinobi #lx100
+                                      (setf x (+ x (getf (get-nearest-wall shinobi #lx10
                                                                            :error-if-not-found t)
                                                          :dist))))))
                                 t))
@@ -201,21 +201,22 @@
 
 (defun.ps+ get-nearest-wall (shinobi max-distance &key (error-if-not-found nil) (tolerance #lx0.01))
   (check-entity-tags shinobi :shinobi)
-  (unless (> (get-my-ground-height shinobi max-distance)
-             (get-bottom shinobi))
-    (if error-if-not-found
-        (error "Wall is not found in near.")
-        (return-from get-nearest-wall)))
-  (let ((current-ground-height (get-my-ground-height shinobi)))
+  (let ((bottom (get-bottom shinobi)))
+    (unless (> (get-my-ground-height shinobi max-distance)
+               bottom)
+      (if error-if-not-found
+          (error "Wall is not found in near.")
+          (return-from get-nearest-wall)))
     (labels ((rec (current-min-dist current-max-dist)
                (if (< (- current-max-dist current-min-dist) tolerance)
                    (list :dist current-min-dist
                          :height (get-my-ground-height shinobi current-max-dist))
                    (let ((mid (/ (+ current-min-dist current-max-dist) 2)))
-                     (if (> (get-my-ground-height shinobi mid) current-ground-height)
+                     (if (> (get-my-ground-height shinobi mid) bottom)
                          (rec current-min-dist mid)
                          (rec mid current-max-dist))))))
-      (rec 0 max-distance))))
+      (rec (* -1 (get-entity-param shinobi :width))
+           max-distance))))
 
 (defun.ps+ get-next-state (shinobi)
   (check-entity-tags shinobi :shinobi)
