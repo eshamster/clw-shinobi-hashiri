@@ -108,15 +108,22 @@
                (start-process (lambda (state)
                                 (setf-gravity-rate state
                                                    (get-param :shinobi :glide :gravity-rate))
-                                (let ((shinobi (shinobi-state-shinobi state)))
+                                (let* ((shinobi (shinobi-state-shinobi state))
+                                       (speed (get-ecs-component 'speed-2d shinobi)))
+                                  (setf (speed-2d-x speed)
+                                        (* -1 (get-param :shinobi :glide :back-speed)))
                                   (unless (get-entity-param shinobi :has-glided-p)
                                     (set-entity-param shinobi :has-glided-p t)
-                                    (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+                                    (setf (speed-2d-y speed)
                                           (get-param :shinobi :glide :first-y-speed))))
                                 t))
                (process #'process-in-gliding)
                (end-process (lambda (state)
-                              (setf-gravity-rate state 1))))))
+                              (let* ((shinobi (shinobi-state-shinobi state))
+                                     (speed (get-ecs-component 'speed-2d shinobi)))
+                                (setf (speed-2d-x speed) 0))
+                              (setf-gravity-rate state 1)
+                              t)))))
 
 (defstruct.ps+
     (on-ground-state
