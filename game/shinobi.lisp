@@ -85,6 +85,11 @@
 
 (defun.ps+ process-in-gliding (state)
   (let ((shinobi (shinobi-state-shinobi state)))
+    (with-ecs-components (speed-2d) shinobi
+      (symbol-macrolet ((y (speed-2d-y speed-2d)))
+        (let ((max-speed (* -1 (get-param :shinobi :glide :max-fall-speed))))
+          (when (< y max-speed)
+            (setf y max-speed)))))
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
           ((is-key-up-now *jump-key*)
