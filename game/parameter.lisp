@@ -30,11 +30,11 @@
   (convert-to-layered-hash
    (:field (:width field-width :height field-height)
     :shinobi (:width #ly40 :height #ly40
-              :jump (:speed 4 :max-time 20)
+              :jump (:speed 5 :max-time 18)
               :on-ground (:default-x #lx200 :return-speed #lx3)
-              :glide (:gravity-rate 0.1)
-              :climb-jump (:min-speed #lx3 :max-speed #lx5 :duration 20))
-    :gravity (:accell #ly0.4 :max-speed 20))))
+              :glide (:gravity-rate 0.15 :first-y-speed #lx2)
+              :climb-jump (:min-speed #lx5 :max-speed #lx7 :duration 15))
+    :gravity (:accell #ly0.45 :max-speed 20))))
 
 (defmacro.ps+ get-param (&rest keys)
   `(get-layered-hash *params* ,@keys))

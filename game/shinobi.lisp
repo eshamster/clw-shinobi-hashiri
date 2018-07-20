@@ -102,7 +102,13 @@
      (:include shinobi-state
                (start-process (lambda (state)
                                 (setf-gravity-rate state
-                                                   (get-param :shinobi :glide :gravity-rate))))
+                                                   (get-param :shinobi :glide :gravity-rate))
+                                (let ((shinobi (shinobi-state-shinobi state)))
+                                  (unless (get-entity-param shinobi :has-glided-p)
+                                    (set-entity-param shinobi :has-glided-p t)
+                                    (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+                                          (get-param :shinobi :glide :first-y-speed))))
+                                t))
                (process #'process-in-gliding)
                (end-process (lambda (state)
                               (setf-gravity-rate state 1))))))
@@ -110,6 +116,10 @@
 (defstruct.ps+
     (on-ground-state
      (:include shinobi-state
+               (start-process (lambda (state)
+                                (let ((shinobi (shinobi-state-shinobi state)))
+                                  (set-entity-param shinobi :has-glided-p nil))
+                                t))
                (process (lambda (state)
                           (let* ((shinobi (shinobi-state-shinobi state))
                                  (default-x (get-param :shinobi :on-ground :default-x))
@@ -284,6 +294,7 @@
                            :jump-input-state :up ;; up-now up down-now down
                            :on-ground-p nil
                            :scroll-p nil
+                           :has-glided-p nil
                            :width width
                            :height height)))
     (add-on-ground-scroll
