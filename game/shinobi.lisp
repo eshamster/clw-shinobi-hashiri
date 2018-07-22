@@ -200,7 +200,15 @@
                                          (get-param :shinobi :on-ground :return-speed))
                                    (make-falling-state :shinobi shinobi))
                                   ((is-key-up-now *jump-key*)
-                                   (make-holding-wall-state :shinobi shinobi))))))
+                                   ;; Note: If exceeds height of the nearest wall in end-process,
+                                   ;; holding-wall-state falls in error in its start-process
+                                   ;; because no near wall is found.
+                                   ;; For a temporal solution, transit to falling-state once.
+                                   ;; If the nearest wall is still found, automatically transit
+                                   ;; to holing-wall-state. But as a side effect, it sinks into
+                                   ;; the wall in a moment.
+                                   ;; (make-holding-wall-state :shinobi shinobi)
+                                   (make-falling-state :shinobi shinobi))))))
                (end-process (lambda (state)
                               (let ((shinobi (shinobi-state-shinobi state)))
                                 (when (not (typep (get-next-state shinobi) 'climb-state))
