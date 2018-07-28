@@ -8,7 +8,9 @@
            :add-on-ground-scroll)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
-                :get-depth))
+                :get-depth)
+  (:import-from :alexandria
+                :with-gensyms))
 (in-package :clw-shinobi-hashiri/game/ground)
 
 ;; TODO: Prevent overflow by scroll
@@ -40,7 +42,7 @@ If the entity is deleted, the func is also deleted"
         (left (point-2d-x (get-ecs-component 'point-2d ground)))
         (max-height #ly-1000)
         (result nil))
-    (dolist (wall (get-entity-param ground :stage))
+    (do-wall (wall ground)
       (let ((height (wall-height wall))
             (right (+ left (wall-width wall))))
         (when (> left max-x)
@@ -90,22 +92,35 @@ If the entity is deleted, the func is also deleted"
 
 (defun.ps+ interpret-stage (ground stage)
   ;; TODO: Incrementaly add (and delete) models
-  (let ((x 0))
+  (let ((x 0)
+        (wall-entity-list '()))
     (dolist (wall stage)
-      (with-slots (width height) wall
-        (add-ecs-component
-         (make-model-2d :model (make-solid-rect :width width
-                                                :height height
-                                                :color #x000000)
-                        :depth (get-depth :ground)
-                        :offset (make-point-2d :x x))
-         ground)
-        (incf x width))))
-  (set-entity-param ground :stage stage))
+      (let ((entity (make-ecs-entity)))
+        (add-entity-tag entity :wall)
+        (with-slots (width height) wall
+          (add-ecs-component-list
+           entity
+           wall
+           (make-point-2d :x x)
+           (make-model-2d :model (make-solid-rect :width width
+                                                  :height height
+                                                  :color #x000000)
+                          :depth (get-depth :ground)))
+          (incf x width))
+        (add-ecs-entity entity ground)
+        (push entity wall-entity-list)))
+    (set-entity-param ground :wall-list (reverse wall-entity-list))))
+
+(defmacro.ps+ do-wall ((var ground) &body body)
+  (with-gensyms (ground-entity)
+    `(progn (check-entity-tags ,ground :ground)
+            (dolist (,ground-entity (get-entity-param ,ground :wall-list))
+              (let ((,var (get-ecs-component 'wall ,ground-entity)))
+                ,@body)))))
 
 (defun.ps+ debug-ground (ground)
   (let (max-id min-id)
-    (dolist (wall (get-entity-param ground :stage))
+    (do-wall (wall ground)
       (let ((id (wall-id wall)))
         (when (or (not min-id)
                   (> min-id id))
@@ -126,11 +141,11 @@ If the entity is deleted, the func is also deleted"
                              (scroll-ground entity)
                              (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)))
+    (add-ecs-entity ground parent)
     (interpret-stage
      ground
      (create-stage (#ly50 #lx300)
                    (#ly-1 #lx80)
                    (#ly80 #lx100)
                    (#ly200 #lx 200)))
-    (add-ecs-entity ground parent)
     ground))
