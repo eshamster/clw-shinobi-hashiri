@@ -103,6 +103,19 @@ If the entity is deleted, the func is also deleted"
         (incf x width))))
   (set-entity-param ground :stage stage))
 
+(defun.ps+ debug-ground (ground)
+  (let (max-id min-id)
+    (dolist (wall (get-entity-param ground :stage))
+      (let ((id (wall-id wall)))
+        (when (or (not min-id)
+                  (> min-id id))
+          (setf min-id id))
+        (when (or (not max-id)
+                  (< max-id id))
+          (setf max-id id))))
+    (add-to-monitoring-log
+     (+ "Ground: Min ID=" min-id ",Max ID=" max-id))))
+
 (defun.ps+ init-ground (parent)
   (let ((ground (make-ecs-entity)))
     (add-entity-tag ground :ground)
@@ -110,7 +123,8 @@ If the entity is deleted, the func is also deleted"
      ground
      (make-point-2d)
      (make-script-2d :func (lambda (entity)
-                             (scroll-ground entity)))
+                             (scroll-ground entity)
+                             (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)))
     (interpret-stage
      ground
