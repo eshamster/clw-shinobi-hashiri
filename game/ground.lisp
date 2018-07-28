@@ -23,12 +23,99 @@ If the entity is deleted, the func is also deleted"
   (setf (gethash (ecs-entity-id entity) (get-entity-param ground :on-scroll))
         func))
 
-;; --- --- ;;
 
-(defvar.ps+ *next-wall-id* 0)
+;; --- stage structure --- ;;
 
 (defstruct.ps+ (wall (:include ecs-component))
     id height width name)
+
+(defun.ps+ clone-wall (wall)
+  (with-slots (id height width name) wall
+    (make-wall :id id :height height :width width :name name)))
+
+(defstruct.ps+ stage-info
+    (fn-get-wall (lambda (id info) (declare (ignore id info)))))
+
+(defstruct.ps+
+    (loop-stage-info
+       (:include stage-info
+                 (fn-get-wall
+                  (lambda (id info)
+                    (let ((lst (loop-stage-info-wall-list info)))
+                      (nth (mod id (length lst)) lst))))))
+    wall-list)
+
+(defstruct.ps+ stage-manager
+    stage-info)
+
+;; --- stage manager process --- ;;
+
+(defun.ps+ get-max-id-wall (ground)
+  (let (max-id result)
+    (do-wall-entity (entity ground)
+      (let ((id (wall-id (get-ecs-component 'wall entity))))
+        (when (or (null max-id)
+                  (< max-id id))
+          (setf max-id id
+                result entity))))
+    result))
+
+(defun.ps+ get-right-of-wall (wall-entity)
+  (check-entity-tags wall-entity :wall)
+  (+ (point-2d-x (calc-global-point wall-entity))
+     (wall-width (get-ecs-component 'wall wall-entity))))
+
+(defun.ps+ make-next-wall-entity (&key wall-cmp id local-left)
+  (let ((entity (make-ecs-entity))
+        (cmp (clone-wall wall-cmp)))
+    (add-entity-tag entity :wall)
+    (setf (wall-id cmp) id)
+    (with-slots (width height) wall-cmp
+      (add-ecs-component-list
+       entity
+       cmp
+       (make-point-2d :x local-left)
+       (make-model-2d :model (make-solid-rect :width width
+                                              :height height
+                                              :color #x000000)
+                      :depth (get-depth :ground))
+       (make-script-2d :func (lambda (entity)
+                               (let ((wall (get-ecs-component 'wall entity))
+                                     (pnt (calc-global-point entity)))
+                                 (when (< (+ (point-2d-x pnt) (wall-width wall))
+                                          0)
+                                   (register-next-frame-func
+                                    (lambda () (delete-ecs-entity entity)))))))))
+    entity))
+
+(defun.ps+ generate-required-walls (manager ground &optional latest-wall)
+  (check-type manager stage-manager)
+  (check-entity-tags ground :ground)
+  (when latest-wall
+    (check-entity-tags latest-wall :wall))
+  (let* ((rightest-wall (if latest-wall latest-wall (get-max-id-wall ground)))
+         (params (if rightest-wall
+                     (list :right (get-right-of-wall rightest-wall)
+                           :next-id (1+ (wall-id (get-ecs-component 'wall rightest-wall))))
+                     (list :right 0
+                           :next-id 0))))
+    (when (< (getf params :right)
+             (get-param :field :width))
+      (let* ((stage-info (stage-manager-stage-info manager))
+             (get-wall (stage-info-fn-get-wall stage-info))
+             (next-id (getf params :next-id))
+             (next-wall-cmp (funcall get-wall next-id stage-info)))
+        (when next-wall-cmp
+          (let ((new-wall-entity (make-next-wall-entity
+                                  :wall-cmp next-wall-cmp
+                                  :id next-id
+                                  :local-left (- (getf params :right)
+                                                 (point-2d-x (get-ecs-component
+                                                              'point-2d ground))))))
+            (add-ecs-entity-to-buffer new-wall-entity ground)
+            (generate-required-walls manager ground new-wall-entity)))))))
+
+;; --- --- ;;
 
 (defvar.ps+ *dummy-scroll-speed* 1.5)
 
@@ -60,6 +147,10 @@ If the entity is deleted, the func is also deleted"
         (wall-height wall)
         #ly-1000)))
 
+(defun parse-int (id)
+  ;; This is a dummy function.
+  id)
+
 (defun.ps+ scroll-ground (ground)
   (check-entity-tags ground :ground)
   (let ((scroll-speed *dummy-scroll-speed*)
@@ -68,9 +159,11 @@ If the entity is deleted, the func is also deleted"
       (incf (point-2d-x point-2d)
             (* -1 scroll-speed)))
     (maphash (lambda (entity-id func)
+               ;; Note: In JavaSctipt, Object.keys(<hash>) returns array of string,
+               ;; even if each of keys is number.
                (let ((entity (find-a-entity (lambda (target)
-                                              (= (ecs-entity-id target))
-                                              entity-id))))
+                                              (= (ecs-entity-id target)
+                                                 (parse-int entity-id))))))
                  (if (find-the-entity entity)
                      (funcall func entity scroll-speed)
                      (register-next-frame-func
@@ -78,41 +171,15 @@ If the entity is deleted, the func is also deleted"
              on-scroll-hash)))
 
 ;; Definition of stage
-;; ((height distance) (height distance) ...)
+;; ((height distance [:name "name"]) (height distance [:name "name"]) ...)
 (defmacro.ps+ create-stage (&rest def)
   `(list ,@(mapcar (lambda (block-def)
                      (destructuring-bind (height width &key name)
                          block-def
-                       `(make-wall :id (incf *next-wall-id*)
-                                   :height ,height
+                       `(make-wall :height ,height
                                    :width ,width
                                    :name ,name)))
                    def)))
-
-(defun.ps+ interpret-stage (ground stage)
-  ;; TODO: Incrementaly add models
-  (let ((x 0))
-    (dolist (wall-cmp stage)
-      (let ((entity (make-ecs-entity)))
-        (add-entity-tag entity :wall)
-        (with-slots (width height) wall-cmp
-          (add-ecs-component-list
-           entity
-           wall-cmp
-           (make-point-2d :x x)
-           (make-model-2d :model (make-solid-rect :width width
-                                                  :height height
-                                                  :color #x000000)
-                          :depth (get-depth :ground))
-           (make-script-2d :func (lambda (entity)
-                                   (let ((wall (get-ecs-component 'wall entity))
-                                         (pnt (calc-global-point entity)))
-                                     (when (< (+ (point-2d-x pnt) (wall-width wall))
-                                              0)
-                                       (register-next-frame-func
-                                        (lambda () (delete-ecs-entity entity))))))))
-          (incf x width))
-        (add-ecs-entity entity ground)))))
 
 (defmacro.ps+ do-wall-entity ((var ground) &body body)
   `(progn (check-entity-tags ,ground :ground)
@@ -141,23 +208,26 @@ If the entity is deleted, the func is also deleted"
      (+ "Ground: Min ID=" min-id ",Max ID=" max-id))))
 
 (defun.ps+ init-ground (parent)
-  (let ((ground (make-ecs-entity)))
+  (let ((ground (make-ecs-entity))
+        (stage-manager
+         (make-stage-manager
+          :stage-info (make-loop-stage-info
+                       :wall-list
+                       (create-stage (#ly50 #lx300)
+                                     (#ly-1 #lx80)
+                                     (#ly80 #lx100)
+                                     (#ly350 #lx200)
+                                     (#ly700 #lx200)
+                                     (#ly-1 #lx300)
+                                     (#ly100 #lx200))))))
     (add-entity-tag ground :ground)
     (add-ecs-component-list
      ground
      (make-point-2d)
      (make-script-2d :func (lambda (entity)
+                             (generate-required-walls stage-manager entity)
                              (scroll-ground entity)
                              (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)))
     (add-ecs-entity ground parent)
-    (interpret-stage
-     ground
-     (create-stage (#ly50 #lx300)
-                   (#ly-1 #lx80)
-                   (#ly80 #lx100)
-                   (#ly350 #lx200)
-                   (#ly700 #lx200)
-                   (#ly-1 #lx300)
-                   (#ly100 #lx2000)))
     ground))
