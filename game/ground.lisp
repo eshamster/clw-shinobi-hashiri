@@ -39,20 +39,19 @@ If the entity is deleted, the func is also deleted"
   (check-entity-tags ground :ground)
   (let ((min-x (- center-x (* 1/2 width)))
         (max-x (+ center-x (* 1/2 width)))
-        (left (point-2d-x (get-ecs-component 'point-2d ground)))
         (max-height #ly-1000)
         (result nil))
-    (do-wall (wall ground)
-      (let ((height (wall-height wall))
-            (right (+ left (wall-width wall))))
-        (when (> left max-x)
-          (return-from get-highest-wall result))
-        (when (and (> right min-x)
+    (do-wall-entity (wall-entity ground)
+      (let* ((wall (get-ecs-component 'wall wall-entity))
+             (height (wall-height wall))
+             (left (point-2d-x (calc-global-point wall-entity)))
+             (right (+ left (wall-width wall))))
+        (when (and (< left max-x)
+                   (> right min-x)
                    (>= height 0)
                    (> height max-height))
           (setf max-height height)
-          (setf result wall))
-        (setf left right)))
+          (setf result wall))))
     result))
 
 (defun.ps+ get-ground-height (center-x width &optional (ground (find-ground)))
@@ -91,32 +90,42 @@ If the entity is deleted, the func is also deleted"
                    def)))
 
 (defun.ps+ interpret-stage (ground stage)
-  ;; TODO: Incrementaly add (and delete) models
-  (let ((x 0)
-        (wall-entity-list '()))
-    (dolist (wall stage)
+  ;; TODO: Incrementaly add models
+  (let ((x 0))
+    (dolist (wall-cmp stage)
       (let ((entity (make-ecs-entity)))
         (add-entity-tag entity :wall)
-        (with-slots (width height) wall
+        (with-slots (width height) wall-cmp
           (add-ecs-component-list
            entity
-           wall
+           wall-cmp
            (make-point-2d :x x)
            (make-model-2d :model (make-solid-rect :width width
                                                   :height height
                                                   :color #x000000)
-                          :depth (get-depth :ground)))
+                          :depth (get-depth :ground))
+           (make-script-2d :func (lambda (entity)
+                                   (let ((wall (get-ecs-component 'wall entity))
+                                         (pnt (calc-global-point entity)))
+                                     (when (< (+ (point-2d-x pnt) (wall-width wall))
+                                              0)
+                                       (register-next-frame-func
+                                        (lambda () (delete-ecs-entity entity))))))))
           (incf x width))
-        (add-ecs-entity entity ground)
-        (push entity wall-entity-list)))
-    (set-entity-param ground :wall-list (reverse wall-entity-list))))
+        (add-ecs-entity entity ground)))))
+
+(defmacro.ps+ do-wall-entity ((var ground) &body body)
+  `(progn (check-entity-tags ,ground :ground)
+          (do-ecs-entities ,var
+            (when (and (has-entity-tag ,var :wall)
+                       (eq (ecs-entity-parent ,var) ,ground))
+              ,@body))))
 
 (defmacro.ps+ do-wall ((var ground) &body body)
-  (with-gensyms (ground-entity)
-    `(progn (check-entity-tags ,ground :ground)
-            (dolist (,ground-entity (get-entity-param ,ground :wall-list))
-              (let ((,var (get-ecs-component 'wall ,ground-entity)))
-                ,@body)))))
+  (with-gensyms (entity)
+    `(do-wall-entity (,entity ,ground)
+       (let ((,var (get-ecs-component 'wall ,entity)))
+         ,@body))))
 
 (defun.ps+ debug-ground (ground)
   (let (max-id min-id)
@@ -147,5 +156,8 @@ If the entity is deleted, the func is also deleted"
      (create-stage (#ly50 #lx300)
                    (#ly-1 #lx80)
                    (#ly80 #lx100)
-                   (#ly200 #lx 200)))
+                   (#ly350 #lx200)
+                   (#ly700 #lx200)
+                   (#ly-1 #lx300)
+                   (#ly100 #lx2000)))
     ground))
