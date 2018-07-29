@@ -120,7 +120,8 @@ If the entity is deleted, the func is also deleted"
 (defvar.ps+ *random-generator-params*
     (convert-to-layered-hash
      (:height (:min #ly50 :max #ly800)
-      :width (:min #lx50 :max #lx400))))
+      :width (:min #lx50 :max #lx400)
+      :hole (:ratio 0.3 :min #lx80 :max #lx300))))
 
 (defun.ps-only random1 () (random))
 (defun random1 () (random 1.0))
@@ -132,15 +133,23 @@ If the entity is deleted, the func is also deleted"
                   ,(get-my-param key :max)
                   (random1))))
 
+(defun.ps+ wall-is-hole-p (wall-cmp)
+  (< (wall-height wall-cmp) 0))
+
 (defun.ps+ get-wall-randomly (id info)
   (declare (ignore id))
   (check-type info random-stage-info)
   (with-slots (pre-wall (params random-params)) info
     (let ((result
-           (if pre-wall
-               (make-wall :height (get-param-randomly params :height)
-                          :width (get-param-randomly params :width))
-               (make-wall :height #ly50 :width #lx500))))
+           (cond ((null pre-wall)
+                  (make-wall :height #ly50 :width #lx500))
+                 ((and (not (wall-is-hole-p pre-wall))
+                       (> (get-layered-hash params :hole :ratio)
+                          (random1)))
+                  (make-wall :height -1
+                             :width (get-param-randomly params :hole)))
+                 (t (make-wall :height (get-param-randomly params :height)
+                               :width (get-param-randomly params :width))))))
       (setf pre-wall result)
       result)))
 
