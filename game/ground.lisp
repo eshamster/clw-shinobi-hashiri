@@ -115,9 +115,48 @@ If the entity is deleted, the func is also deleted"
             (add-ecs-entity-to-buffer new-wall-entity ground)
             (generate-required-walls manager ground new-wall-entity)))))))
 
+;; --- random stage generator --- ;;
+
+(defvar.ps+ *random-generator-params*
+    (convert-to-layered-hash
+     (:height (:min #ly50 :max #ly800)
+      :width (:min #lx50 :max #lx400))))
+
+(defun.ps-only random1 () (random))
+(defun random1 () (random 1.0))
+
+(defmacro.ps+ get-param-randomly (params key)
+  (flet ((get-my-param (key1 key2)
+           `(get-layered-hash ,params ,key1 ,key2)))
+    `(lerp-scalar ,(get-my-param key :min)
+                  ,(get-my-param key :max)
+                  (random1))))
+
+(defun.ps+ get-wall-randomly (id info)
+  (declare (ignore id))
+  (check-type info random-stage-info)
+  (with-slots (pre-wall (params random-params)) info
+    (let ((result
+           (if pre-wall
+               (make-wall :height (get-param-randomly params :height)
+                          :width (get-param-randomly params :width))
+               (make-wall :height #ly50 :width #lx500))))
+      (setf pre-wall result)
+      result)))
+
+(defstruct.ps+
+    (random-stage-info
+     (:include stage-info
+               (fn-get-wall #'get-wall-randomly)))
+    pre-wall
+  random-params)
+
+(defun.ps+ init-random-stage-info (&optional (params *random-generator-params*))
+  (make-random-stage-info :random-params params))
+
 ;; --- --- ;;
 
-(defvar.ps+ *dummy-scroll-speed* 1.5)
+(defvar.ps+ *dummy-scroll-speed* 2)
 
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
@@ -207,19 +246,24 @@ If the entity is deleted, the func is also deleted"
     (add-to-monitoring-log
      (+ "Ground: Min ID=" min-id ",Max ID=" max-id))))
 
+;; for test
+(defvar.ps+ *static-stage-info*
+    (make-loop-stage-info
+     :wall-list (create-stage (#ly50 #lx300)
+                              (#ly-1 #lx80)
+                              (#ly80 #lx100)
+                              (#ly350 #lx200)
+                              (#ly700 #lx200)
+                              (#ly-1 #lx300)
+                              (#ly100 #lx200))))
+
 (defun.ps+ init-ground (parent)
-  (let ((ground (make-ecs-entity))
-        (stage-manager
-         (make-stage-manager
-          :stage-info (make-loop-stage-info
-                       :wall-list
-                       (create-stage (#ly50 #lx300)
-                                     (#ly-1 #lx80)
-                                     (#ly80 #lx100)
-                                     (#ly350 #lx200)
-                                     (#ly700 #lx200)
-                                     (#ly-1 #lx300)
-                                     (#ly100 #lx200))))))
+  (let* ((ground (make-ecs-entity))
+         (stage-manager
+          (make-stage-manager
+           ;; :stage-info *static-stage-info*
+           :stage-info (init-random-stage-info)
+           )))
     (add-entity-tag ground :ground)
     (add-ecs-component-list
      ground
