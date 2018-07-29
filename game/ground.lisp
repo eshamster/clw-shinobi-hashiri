@@ -119,8 +119,9 @@ If the entity is deleted, the func is also deleted"
 
 (defvar.ps+ *random-generator-params*
     (convert-to-layered-hash
-     (:height (:min #ly50 :max #ly800)
-      :width (:min #lx50 :max #lx400)
+     (:height (:min #ly50 :max #ly800
+               :diff (:min #ly50 :max #ly500))
+      :width (:min #lx30 :max #lx400)
       :hole (:ratio 0.3 :min #lx80 :max #lx300))))
 
 (defun.ps-only random1 () (random))
@@ -136,21 +137,37 @@ If the entity is deleted, the func is also deleted"
 (defun.ps+ wall-is-hole-p (wall-cmp)
   (< (wall-height wall-cmp) 0))
 
+(defun.ps+ calc-next-height (params pre-wall)
+  (let ((pre-height (wall-height pre-wall)))
+    (labels ((rec ()
+               (let ((height (get-param-randomly params :height)))
+                 (if (and (> (abs (- pre-height height))
+                               (get-layered-hash params :height :diff :min))
+                            ;; Intentionally omit "abs"
+                            (< (- height pre-height)
+                               (get-layered-hash params :height :diff :max)))
+                     (return-from rec height)
+                     (rec)))))
+      (rec))))
+
 (defun.ps+ get-wall-randomly (id info)
   (declare (ignore id))
   (check-type info random-stage-info)
-  (with-slots (pre-wall (params random-params)) info
+  (with-slots (pre-wall (params random-params) pre-is-hole-p) info
     (let ((result
            (cond ((null pre-wall)
                   (make-wall :height #ly50 :width #lx500))
-                 ((and (not (wall-is-hole-p pre-wall))
+                 ((and (not pre-is-hole-p)
                        (> (get-layered-hash params :hole :ratio)
                           (random1)))
                   (make-wall :height -1
                              :width (get-param-randomly params :hole)))
-                 (t (make-wall :height (get-param-randomly params :height)
+                 (t (make-wall :height (calc-next-height params pre-wall)
                                :width (get-param-randomly params :width))))))
-      (setf pre-wall result)
+      (if (wall-is-hole-p result)
+          (setf pre-is-hole-p t)
+          (progn (setf pre-wall result
+                       pre-is-hole-p nil)))
       result)))
 
 (defstruct.ps+
@@ -158,6 +175,7 @@ If the entity is deleted, the func is also deleted"
      (:include stage-info
                (fn-get-wall #'get-wall-randomly)))
     pre-wall
+  (pre-is-hole-p nil)
   random-params)
 
 (defun.ps+ init-random-stage-info (&optional (params *random-generator-params*))
