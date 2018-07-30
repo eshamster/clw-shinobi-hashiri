@@ -12,6 +12,8 @@
                 :stop-gravity)
   (:import-from :clw-shinobi-hashiri/game/ground
                 :get-ground-height
+                :get-wall-info
+                :get-highest-wall-info
                 :add-on-ground-scroll)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
@@ -23,12 +25,19 @@
 (defun.ps+ find-shinobi ()
   (find-a-entity-by-tag :shinobi))
 
-(defun.ps+ get-my-ground-height (shinobi &optional (extra-dist 0))
+(defun.ps+ get-my-ground-info (func shinobi &optional (extra-dist 0))
   (check-entity-tags shinobi :shinobi)
-  (get-ground-height (+ (point-2d-x (get-ecs-component 'point-2d shinobi))
-                        (* 1/2 extra-dist))
-                     (+ (get-entity-param shinobi :width)
-                        extra-dist)))
+  (funcall func
+           (+ (point-2d-x (get-ecs-component 'point-2d shinobi))
+              (* 1/2 extra-dist))
+           (+ (get-entity-param shinobi :width)
+              extra-dist)))
+
+(defun.ps+ get-my-ground-height (shinobi &optional (extra-dist 0))
+  (get-my-ground-info #'get-ground-height shinobi extra-dist))
+
+(defun.ps+ get-my-highest-wall-info (shinobi &optional (extra-dist 0))
+  (get-my-ground-info #'get-highest-wall-info shinobi extra-dist))
 
 ;; --- jump --- ;;
 
@@ -149,26 +158,29 @@
 
 ;; - climb states - ;;
 
-(defstruct.ps+ (climb-state (:include shinobi-state)))
+(defstruct.ps+ (climb-state (:include shinobi-state))
+    target-wall)
 
 (defstruct.ps+
     (holding-wall-state
      (:include climb-state
                (start-process (lambda (state)
-                                (let ((shinobi (shinobi-state-shinobi state)))
+                                (with-slots (shinobi target-wall) state
                                   (set-entity-param shinobi :scroll-p t)
                                   (stop-gravity shinobi)
                                   (with-ecs-components (speed-2d point-2d) shinobi
                                     (setf (speed-2d-y speed-2d) 0)
-                                    (symbol-macrolet ((x (point-2d-x point-2d)))
-                                      (setf x (+ x (getf (get-nearest-wall shinobi #lx10
-                                                                           :error-if-not-found t)
-                                                         :dist))))))
+                                    (when (find-the-entity target-wall)
+                                      (symbol-macrolet ((x (point-2d-x point-2d)))
+                                        (setf x (- (point-2d-x
+                                                    (calc-global-point target-wall))
+                                                   (* 1/2 (get-entity-param shinobi :width))))))))
                                 t))
                (process (lambda (state)
                           (when (is-key-down-now *jump-key*)
-                            (let ((shinobi (shinobi-state-shinobi state)))
-                              (make-climb-jumping-state :shinobi shinobi)))))
+                            (with-slots (shinobi target-wall) state
+                              (make-climb-jumping-state :shinobi shinobi
+                                                        :target-wall target-wall)))))
                (end-process (lambda (state)
                               (let ((shinobi (shinobi-state-shinobi state)))
                                 (when (not (typep (get-next-state shinobi) 'climb-state))
@@ -195,20 +207,10 @@
                                 (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
                                       (lerp-scalar min-speed max-speed (/ time duration))))
                               (incf time))
-                            (cond ((null (get-nearest-wall shinobi #lx1))
-                                   (incf (point-2d-x (get-ecs-component 'point-2d shinobi))
-                                         (get-param :shinobi :on-ground :return-speed))
-                                   (make-falling-state :shinobi shinobi))
-                                  ((is-key-up-now *jump-key*)
-                                   ;; Note: If exceeds height of the nearest wall in end-process,
-                                   ;; holding-wall-state falls in error in its start-process
-                                   ;; because no near wall is found.
-                                   ;; For a temporal solution, transit to falling-state once.
-                                   ;; If the nearest wall is still found, automatically transit
-                                   ;; to holing-wall-state. But as a side effect, it sinks into
-                                   ;; the wall in a moment.
-                                   ;; (make-holding-wall-state :shinobi shinobi)
-                                   (make-falling-state :shinobi shinobi))))))
+                            (when (is-key-up-now *jump-key*)
+                              (with-slots (target-wall) state
+                                (make-holding-wall-state :shinobi shinobi
+                                                         :target-wall target-wall))))))
                (end-process (lambda (state)
                               (let ((shinobi (shinobi-state-shinobi state)))
                                 (when (not (typep (get-next-state shinobi) 'climb-state))
@@ -240,8 +242,10 @@
           (return-from get-nearest-wall)))
     (labels ((rec (current-min-dist current-max-dist)
                (if (< (- current-max-dist current-min-dist) tolerance)
-                   (list :dist current-min-dist
-                         :height (get-my-ground-height shinobi current-max-dist))
+                   (let ((info (get-my-highest-wall-info shinobi current-max-dist)))
+                     (list :dist current-min-dist
+                           :height (getf info :height)
+                           :entity (getf info :entity)))
                    (let ((mid (/ (+ current-min-dist current-max-dist) 2)))
                      (if (> (get-my-ground-height shinobi mid) bottom)
                          (rec current-min-dist mid)
@@ -260,15 +264,28 @@
 (defun.ps+ process-jump-state (shinobi)
   (check-entity-tags shinobi :shinobi)
   (let ((state-manager (get-entity-param shinobi :jump-state-manager))
-        ;; XXX: Search length should be decided according to scroll speed
-        (nearest-wall (get-nearest-wall shinobi #lx10)))
-    (when (and nearest-wall
-               (> (getf nearest-wall :height) (get-bottom shinobi))
-               (null (game-state-manager-next-state state-manager))
-               (not (typep (get-current-state shinobi) 'climb-state)))
-      (interrupt-game-state
-       (make-holding-wall-state :shinobi shinobi)
-       state-manager))
+        (current-state (get-current-state shinobi)))
+    ;; Note: Probably, these states change can be implemented more well,
+    ;; if there is multiple layer state system...
+    (if (not (typep current-state 'climb-state))
+        ;; normal states to climb states
+        (let ( ;; XXX: Search length should be decided according to scroll speed
+              (nearest-wall-info (get-nearest-wall shinobi #lx10)))
+          (when (and nearest-wall-info
+                     (> (getf nearest-wall-info :height) (get-bottom shinobi))
+                     (null (game-state-manager-next-state state-manager)))
+            (interrupt-game-state
+             (make-holding-wall-state :shinobi shinobi
+                                      :target-wall (getf nearest-wall-info :entity))
+             state-manager)))
+        ;; climb states to normal states
+        (let* ((wall-entity (climb-state-target-wall current-state))
+               (height (getf (get-wall-info wall-entity) :height)))
+          (when (and (< height (get-bottom shinobi))
+                     (null (game-state-manager-next-state state-manager)))
+            (interrupt-game-state
+             (make-falling-state :shinobi shinobi)
+             state-manager))))
     (process-game-state state-manager)))
 
 (defun.ps+ get-bottom (shinobi)

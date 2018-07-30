@@ -5,7 +5,9 @@
         :cl-web-2d-game)
   (:export :init-ground
            :get-ground-height
-           :add-on-ground-scroll)
+           :add-on-ground-scroll
+           :get-wall-info
+           :get-highest-wall-info)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth)
@@ -188,29 +190,36 @@ If the entity is deleted, the func is also deleted"
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
 
-(defun.ps+ get-highest-wall (center-x width &optional (ground (find-ground)))
+(defun.ps+ get-wall-info (wall-entity)
+  (let ((wall-cmp (get-ecs-component 'wall wall-entity)))
+    (list :height (wall-height wall-cmp)
+          :width (wall-width wall-cmp)
+          :entity wall-entity)))
+
+(defun.ps+ get-highest-wall-info (center-x width &optional (ground (find-ground)))
   (check-entity-tags ground :ground)
   (let ((min-x (- center-x (* 1/2 width)))
         (max-x (+ center-x (* 1/2 width)))
         (max-height #ly-1000)
-        (result nil))
+        (highest-entity nil))
     (do-wall-entity (wall-entity ground)
-      (let* ((wall (get-ecs-component 'wall wall-entity))
-             (height (wall-height wall))
+      (let* ((wall-cmp (get-ecs-component 'wall wall-entity))
+             (height (wall-height wall-cmp))
              (left (point-2d-x (calc-global-point wall-entity)))
-             (right (+ left (wall-width wall))))
+             (right (+ left (wall-width wall-cmp))))
         (when (and (< left max-x)
                    (> right min-x)
                    (>= height 0)
                    (> height max-height))
           (setf max-height height)
-          (setf result wall))))
-    result))
+          (setf highest-entity wall-entity))))
+    (when highest-entity
+      (get-wall-info highest-entity))))
 
 (defun.ps+ get-ground-height (center-x width &optional (ground (find-ground)))
-  (let ((wall (get-highest-wall center-x width ground)))
+  (let ((wall (get-highest-wall-info center-x width ground)))
     (if wall
-        (wall-height wall)
+        (getf wall :height)
         #ly-1000)))
 
 (defun parse-int (id)
