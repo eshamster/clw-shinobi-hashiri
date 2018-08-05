@@ -7,7 +7,8 @@
            :get-ground-height
            :add-on-ground-scroll
            :get-wall-info
-           :get-highest-wall-info)
+           :get-highest-wall-info
+           :get-scroll-speed)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth)
@@ -190,6 +191,10 @@ If the entity is deleted, the func is also deleted"
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
 
+(defun.ps+ get-scroll-speed (&optional (ground (find-ground)))
+  (declare (ignore ground))
+  *dummy-scroll-speed*)
+
 (defun.ps+ get-wall-info (wall-entity)
   (let ((wall-cmp (get-ecs-component 'wall wall-entity)))
     (list :height (wall-height wall-cmp)
@@ -228,7 +233,7 @@ If the entity is deleted, the func is also deleted"
 
 (defun.ps+ scroll-ground (ground)
   (check-entity-tags ground :ground)
-  (let ((scroll-speed *dummy-scroll-speed*)
+  (let ((scroll-speed (get-scroll-speed ground))
         (on-scroll-hash (get-entity-param ground :on-scroll)))
     (with-ecs-components (point-2d) ground
       (incf (point-2d-x point-2d)

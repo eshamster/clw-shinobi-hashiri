@@ -14,7 +14,8 @@
                 :get-ground-height
                 :get-wall-info
                 :get-highest-wall-info
-                :add-on-ground-scroll)
+                :add-on-ground-scroll
+                :get-scroll-speed)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth))
@@ -135,6 +136,13 @@
                               (setf-gravity-rate state 1)
                               t)))))
 
+(defun.ps+ get-return-speed ()
+  (get-param :shinobi :on-ground :return-speed))
+
+(defun.ps+ require-return-p (shinobi)
+  (< (point-2d-x (get-ecs-component 'point-2d shinobi))
+     (get-param :shinobi :on-ground :default-x)))
+
 (defstruct.ps+
     (on-ground-state
      (:include shinobi-state
@@ -145,11 +153,11 @@
                (process (lambda (state)
                           (let* ((shinobi (shinobi-state-shinobi state))
                                  (default-x (get-param :shinobi :on-ground :default-x))
-                                 (speed (get-param :shinobi :on-ground :return-speed))
+                                 (speed (get-return-speed))
                                  (point (get-ecs-component 'point-2d shinobi))
                                  (tolerance-height #ly0.0001))
                             (symbol-macrolet ((x (point-2d-x point)))
-                              (when (< x default-x)
+                              (when (require-return-p shinobi)
                                 (setf x (min default-x (+ x speed)))))
                             (cond ((is-key-down-now *jump-key*)
                                    (make-jumping-state :shinobi shinobi))
@@ -263,6 +271,16 @@
   (check-entity-tags shinobi :shinobi)
   (game-state-manager-current-state (get-entity-param shinobi :jump-state-manager)))
 
+(defun.ps+ calc-nearest-wall-search-dist (shinobi)
+  ;; Note: The safety-dist is decided according only to intuition
+  (let ((safety-dist #lx10))
+    (+ safety-dist
+       (get-scroll-speed)
+       (if (and (get-entity-param shinobi :on-ground-p)
+                (require-return-p shinobi))
+           (abs (get-return-speed))
+           0))))
+
 (defun.ps+ process-jump-state (shinobi)
   (check-entity-tags shinobi :shinobi)
   (let ((state-manager (get-entity-param shinobi :jump-state-manager))
@@ -272,8 +290,10 @@
     (if (not (typep current-state 'climb-state))
         ;; normal states to climb states
         (let ( ;; XXX: Search length should be decided according to scroll speed
-              (nearest-wall-info (get-nearest-wall shinobi #lx10)))
+              (nearest-wall-info (get-nearest-wall
+                                  shinobi (calc-nearest-wall-search-dist shinobi))))
           (when (and nearest-wall-info
+                     (> (getf nearest-wall-info :dist) 0)
                      (> (getf nearest-wall-info :height) (get-bottom shinobi))
                      (null (game-state-manager-next-state state-manager)))
             (interrupt-game-state
