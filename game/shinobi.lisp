@@ -184,7 +184,10 @@
                                       (symbol-macrolet ((x (point-2d-x point-2d)))
                                         (setf x (- (point-2d-x
                                                     (calc-global-point target-wall))
-                                                   (* 1/2 (get-entity-param shinobi :width))))))))
+                                                   (* 1/2 (get-entity-param shinobi :width))
+                                                   ;; Offset to avoid from sinking into wall
+                                                   ;; caused by calculation error
+                                                   #lx0.01))))))
                                 t))
                (process (lambda (state)
                           (when (is-key-down-now *jump-key*)
