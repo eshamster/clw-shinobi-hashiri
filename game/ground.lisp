@@ -186,14 +186,11 @@ If the entity is deleted, the func is also deleted"
 
 ;; --- --- ;;
 
-(defvar.ps+ *dummy-scroll-speed* 2)
-
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
 
 (defun.ps+ get-scroll-speed (&optional (ground (find-ground)))
-  (declare (ignore ground))
-  *dummy-scroll-speed*)
+  (get-entity-param ground :scroll-speed))
 
 (defun.ps+ get-wall-info (wall-entity)
   (let ((wall-cmp (get-ecs-component 'wall wall-entity)))
@@ -249,6 +246,13 @@ If the entity is deleted, the func is also deleted"
                      (register-next-frame-func
                       (lambda () (remhash entity on-scroll-hash))))))
              on-scroll-hash)))
+
+(defun.ps+ update-scroll-speed (ground)
+  (check-entity-tags ground :ground)
+  (let ((speed (get-scroll-speed ground)))
+    (set-entity-param ground :scroll-speed
+                      (min (+ speed (get-param :ground :scroll :accell))
+                           (get-param :ground :scroll :max)))))
 
 ;; Definition of stage
 ;; ((height distance [:name "name"]) (height distance [:name "name"]) ...)
@@ -312,7 +316,9 @@ If the entity is deleted, the func is also deleted"
      (make-script-2d :func (lambda (entity)
                              (generate-required-walls stage-manager entity)
                              (scroll-ground entity)
+                             (update-scroll-speed entity)
                              (debug-ground entity)))
-     (init-entity-params :on-scroll (make-hash-table)))
+     (init-entity-params :on-scroll (make-hash-table)
+                         :scroll-speed (get-param :ground :scroll :first)))
     (add-ecs-entity ground parent)
     ground))

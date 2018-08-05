@@ -36,7 +36,8 @@
               :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
                       :back-speed #lx0.4)
               :climb-jump (:min-speed #lx5 :max-speed #lx7 :duration 15))
-    :gravity (:accell #ly0.45 :max-speed 20))))
+    :gravity (:accell #ly0.45 :max-speed 20)
+    :ground (:scroll (:first #lx2 :max #lx5 :accell #lx0.001)))))
 
 (defmacro.ps+ get-param (&rest keys)
   `(get-layered-hash *params* ,@keys))
