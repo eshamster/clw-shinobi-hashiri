@@ -40,11 +40,34 @@
 (defun.ps+ get-my-highest-wall-info (shinobi &optional (extra-dist 0))
   (get-my-ground-info #'get-highest-wall-info shinobi extra-dist))
 
+;; --- input --- ;;
+
+(defvar.ps+ *jump-key* :a)
+
+(defun.ps+ is-my-key-down-now ()
+  (is-key-down-now *jump-key*))
+(defun.ps+ is-my-key-down ()
+  (is-key-down *jump-key*))
+(defun.ps+ is-my-key-up-now ()
+  (is-key-up-now *jump-key*))
+(defun.ps+ is-my-key-up ()
+  (is-key-up *jump-key*))
+
+(defun.ps+ my-key-down-count ()
+  (key-down-count *jump-key*))
+(defun.ps+ my-key-up-count ()
+  (key-up-count *jump-key*))
+
+(defun.ps+ precede-my-key-p (up-or-down allowed-frame)
+  (ecase up-or-down
+    (:up (and (is-my-key-up)
+              (< (my-key-up-count) allowed-frame)))
+    (:down (and (is-my-key-down)
+              (< (my-key-down-count) allowed-frame)))))
+
 ;; --- jump --- ;;
 
 ;; TODO: Split controller
-
-(defvar.ps+ *jump-key* :a)
 
 (defstruct.ps+ (shinobi-state (:include game-state)) shinobi)
 
@@ -62,7 +85,7 @@
                                   (get-param :shinobi :jump :speed))
                             (symbol-macrolet ((duration (jumping-state-duration state)))
                               (decf duration)
-                              (cond ((is-key-up-now *jump-key*)
+                              (cond ((precede-my-key-p :up 3)
                                      (make-falling-state :shinobi shinobi))
                                     ((<= duration 0)
                                      (make-gliding-state :shinobi shinobi)))))))))
@@ -80,7 +103,7 @@
   (let ((shinobi (shinobi-state-shinobi state)))
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
-          ((is-key-down-now *jump-key*)
+          ((precede-my-key-p :down 3)
            (if (>= (get-my-ground-height shinobi) 0)
                (progn
                  (land-immediately shinobi)
@@ -103,7 +126,7 @@
             (setf y max-speed)))))
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
-          ((is-key-up-now *jump-key*)
+          ((precede-my-key-p :up 5)
            (make-falling-state :shinobi shinobi)))))
 
 (defun.ps+ setf-gravity-rate (state rate)
@@ -159,7 +182,7 @@
                             (symbol-macrolet ((x (point-2d-x point)))
                               (when (require-return-p shinobi)
                                 (setf x (min default-x (+ x speed)))))
-                            (cond ((is-key-down-now *jump-key*)
+                            (cond ((precede-my-key-p :down 3)
                                    (make-jumping-state :shinobi shinobi))
                                   ((> (- (get-bottom shinobi) tolerance-height)
                                       (get-my-ground-height shinobi))
@@ -190,7 +213,7 @@
                                                    #lx0.01))))))
                                 t))
                (process (lambda (state)
-                          (when (is-key-down-now *jump-key*)
+                          (when (is-my-key-down)
                             (with-slots (shinobi target-wall) state
                               (make-climb-jumping-state :shinobi shinobi
                                                         :target-wall target-wall)))))
@@ -220,7 +243,7 @@
                                 (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
                                       (lerp-scalar min-speed max-speed (/ time duration))))
                               (incf time))
-                            (when (is-key-up-now *jump-key*)
+                            (when (precede-my-key-p :up 3)
                               (with-slots (target-wall) state
                                 (make-holding-wall-state :shinobi shinobi
                                                          :target-wall target-wall))))))
