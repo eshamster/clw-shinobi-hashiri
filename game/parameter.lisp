@@ -30,6 +30,8 @@
   (convert-to-layered-hash
    (:field (:width field-width :height field-height)
     :shinobi (:width #ly40 :height #ly40
+              :death-margin (:x-ratio 2.0 :y-ratio 1.0)
+              ;; - state params - ;;
               :jump (:speed 5 :max-time 18)
               :on-ground (:default-x #lx300 :return-speed #lx5)
               ;; TODO: Speed to y direction should be specified by #ly instead of #lx

@@ -307,6 +307,17 @@
            (abs (get-return-speed))
            0))))
 
+(defun.ps+ out-of-screen-p (shinobi)
+  (check-entity-tags shinobi :shinobi)
+  (let ((x-ratio (get-param :shinobi :death-margin :x-ratio))
+        (y-ratio (get-param :shinobi :death-margin :y-ratio))
+        (width (get-entity-param shinobi :width))
+        (height (get-entity-param shinobi :height))
+        (pnt (get-ecs-component 'point-2d shinobi)))
+    (with-slots (x y) pnt
+      (or (< x (* width -1 (+ 1/2 x-ratio)))
+          (< y (* height -1 (+ 1/2 y-ratio)))))))
+
 (defun.ps+ process-jump-state (shinobi)
   (check-entity-tags shinobi :shinobi)
   (let ((state-manager (get-entity-param shinobi :jump-state-manager))
@@ -334,6 +345,15 @@
             (interrupt-game-state
              (make-falling-state :shinobi shinobi)
              state-manager))))
+    (when (out-of-screen-p shinobi)
+      (with-slots (x y) (get-ecs-component 'point-2d shinobi)
+        (setf x (get-param :shinobi :on-ground :default-x)
+              y (+ (get-param :field :height) #ly20)))
+      (with-slots (x y) (get-ecs-component 'speed-2d shinobi)
+        (setf x 0 y 0))
+      (interrupt-game-state
+       (make-falling-state :shinobi shinobi)
+       state-manager))
     (process-game-state state-manager)))
 
 (defun.ps+ get-bottom (shinobi)

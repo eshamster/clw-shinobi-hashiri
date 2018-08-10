@@ -86,7 +86,7 @@ If the entity is deleted, the func is also deleted"
                                (let ((wall (get-ecs-component 'wall entity))
                                      (pnt (calc-global-point entity)))
                                  (when (< (+ (point-2d-x pnt) (wall-width wall))
-                                          0)
+                                          #ly-500)
                                    (register-next-frame-func
                                     (lambda () (delete-ecs-entity entity)))))))))
     entity))
