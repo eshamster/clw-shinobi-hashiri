@@ -119,7 +119,13 @@
 
 (defun.ps+ process-in-gliding (state)
   (let ((shinobi (shinobi-state-shinobi state)))
-    (with-ecs-components (speed-2d) shinobi
+    (with-ecs-components (point-2d speed-2d) shinobi
+      (let ((x-max (get-param :shinobi :on-ground :default-x)))
+        (symbol-macrolet ((pnt-x (point-2d-x point-2d))
+                          (speed-x (speed-2d-x speed-2d)))
+          (when (> pnt-x x-max)
+            (setf pnt-x x-max
+                  speed-x 0))))
       (symbol-macrolet ((y (speed-2d-y speed-2d)))
         (let ((max-speed (* -1 (get-param :shinobi :glide :max-fall-speed))))
           (when (< y max-speed)
@@ -145,7 +151,7 @@
                                 (let* ((shinobi (shinobi-state-shinobi state))
                                        (speed (get-ecs-component 'speed-2d shinobi)))
                                   (setf (speed-2d-x speed)
-                                        (* -1 (get-param :shinobi :glide :back-speed)))
+                                        (gliding-state-x-speed state))
                                   (unless (get-entity-param shinobi :has-glided-p)
                                     (set-entity-param shinobi :has-glided-p t)
                                     (setf (speed-2d-y speed)
@@ -157,7 +163,8 @@
                                      (speed (get-ecs-component 'speed-2d shinobi)))
                                 (setf (speed-2d-x speed) 0))
                               (setf-gravity-rate state 1)
-                              t)))))
+                              t))))
+    (x-speed (* -1 (get-param :shinobi :glide :back-speed))))
 
 (defun.ps+ get-return-speed ()
   (get-param :shinobi :on-ground :return-speed))
@@ -343,8 +350,10 @@
                (height (getf (get-wall-info wall-entity) :height)))
           (when (and (< height (get-bottom shinobi))
                      (null (game-state-manager-next-state state-manager)))
+            (set-entity-param shinobi :on-ground-p nil)
             (interrupt-game-state
-             (make-gliding-state :shinobi shinobi)
+             (make-gliding-state :shinobi shinobi
+                                 :x-speed (get-param :shinobi :glide-after-climb :x-speed))
              state-manager))))
     (when (out-of-screen-p shinobi)
       (with-slots (x y) (get-ecs-component 'point-2d shinobi)
