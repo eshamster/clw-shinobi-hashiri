@@ -103,7 +103,7 @@
   (let ((shinobi (shinobi-state-shinobi state)))
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
-          ((precede-my-key-p :down 3)
+          ((precede-my-key-p :down 5)
            (if (>= (get-my-ground-height shinobi) 0)
                (progn
                  (land-immediately shinobi)
@@ -298,14 +298,14 @@
   (game-state-manager-current-state (get-entity-param shinobi :jump-state-manager)))
 
 (defun.ps+ calc-nearest-wall-search-dist (shinobi)
-  ;; Note: The safety-dist is decided according only to intuition
-  (let ((safety-dist #lx10))
-    (+ safety-dist
-       (get-scroll-speed)
-       (if (and (get-entity-param shinobi :on-ground-p)
-                (require-return-p shinobi))
-           (abs (get-return-speed))
-           0))))
+  ;; Note: The safety-dist-scale is decided according only to intuition
+  (let ((safety-dist-scale 3.0))
+    (* safety-dist-scale
+       (+ (abs (get-scroll-speed))
+          (if (and (get-entity-param shinobi :on-ground-p)
+                   (require-return-p shinobi))
+              (abs (get-return-speed))
+              0)))))
 
 (defun.ps+ out-of-screen-p (shinobi)
   (check-entity-tags shinobi :shinobi)
@@ -333,6 +333,7 @@
                      (> (getf nearest-wall-info :dist) 0)
                      (> (getf nearest-wall-info :height) (get-bottom shinobi))
                      (null (game-state-manager-next-state state-manager)))
+            (set-entity-param shinobi :has-glided-p nil)
             (interrupt-game-state
              (make-holding-wall-state :shinobi shinobi
                                       :target-wall (getf nearest-wall-info :entity))
@@ -343,7 +344,7 @@
           (when (and (< height (get-bottom shinobi))
                      (null (game-state-manager-next-state state-manager)))
             (interrupt-game-state
-             (make-falling-state :shinobi shinobi)
+             (make-gliding-state :shinobi shinobi)
              state-manager))))
     (when (out-of-screen-p shinobi)
       (with-slots (x y) (get-ecs-component 'point-2d shinobi)
