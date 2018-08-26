@@ -40,6 +40,12 @@
 (defun.ps+ get-my-highest-wall-info (shinobi &optional (extra-dist 0))
   (get-my-ground-info #'get-highest-wall-info shinobi extra-dist))
 
+(defun.ps+ calc-run-dist (shinobi)
+  (with-ecs-components (point-2d) shinobi
+    (- (get-entity-param shinobi :scroll-sum)
+       (- (get-param :shinobi :on-ground :default-x)
+          (point-2d-x point-2d)))))
+
 ;; --- input --- ;;
 
 (defvar.ps+ *jump-key* :a)
@@ -362,6 +368,8 @@
               y (+ (get-param :field :height) #ly20)))
       (with-slots (x y) (get-ecs-component 'speed-2d shinobi)
         (setf x 0 y 0))
+      (add-to-event-log (+ "run dist: " (calc-run-dist shinobi)))
+      (set-entity-param shinobi :scroll-sum 0)
       (interrupt-game-state
        (make-falling-state :shinobi shinobi)
        state-manager))
@@ -405,7 +413,9 @@
                                (debug-print-state entity)
                                (with-ecs-components (point-2d) entity
                                  (add-to-monitoring-log (+ "x: " (point-2d-x point-2d)))
-                                 (add-to-monitoring-log (+ "y: " (point-2d-y point-2d))))))
+                                 (add-to-monitoring-log (+ "y: " (point-2d-y point-2d))))
+                               (add-to-monitoring-log
+                                (+ "run dist: " (calc-run-dist entity)))))
        (init-entity-params :jump-state-manager
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down
@@ -413,12 +423,14 @@
                            :scroll-p nil
                            :has-glided-p nil
                            :width width
-                           :height height)))
+                           :height height
+                           :scroll-sum 0)))
     (add-on-ground-scroll
      shinobi
      (lambda (entity scroll-speed)
        (when (get-entity-param entity :scroll-p)
          (symbol-macrolet ((x (point-2d-x (get-ecs-component 'point-2d entity))))
-           (setf x (- x scroll-speed)))))
+           (setf x (- x scroll-speed))))
+       (aset-entity-param entity :scroll-sum (+ it scroll-speed)))
      ground)
     (add-ecs-entity shinobi parent)))
