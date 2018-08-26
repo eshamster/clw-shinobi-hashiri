@@ -37,10 +37,10 @@
               ;; TODO: Speed to y direction should be specified by #ly instead of #lx
               :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
                       :back-speed #lx0.4)
-              :glide-after-climb (:x-speed #lx0.6)
+              :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4)
               :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20))
     :gravity (:accell #ly0.45 :max-speed 20)
-    :ground (:scroll (:first #lx2 :max #lx8 :accell #lx0.001)))))
+    :ground (:scroll (:first #lx3 :max #lx8 :accell #lx0.001)))))
 
 (defmacro.ps+ get-param (&rest keys)
   `(get-layered-hash *params* ,@keys))

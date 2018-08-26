@@ -154,8 +154,7 @@
                                         (gliding-state-x-speed state))
                                   (unless (get-entity-param shinobi :has-glided-p)
                                     (set-entity-param shinobi :has-glided-p t)
-                                    (setf (speed-2d-y speed)
-                                          (get-param :shinobi :glide :first-y-speed))))
+                                    (setf (speed-2d-y speed) (gliding-state-y-speed state))))
                                 t))
                (process #'process-in-gliding)
                (end-process (lambda (state)
@@ -164,7 +163,8 @@
                                 (setf (speed-2d-x speed) 0))
                               (setf-gravity-rate state 1)
                               t))))
-    (x-speed (* -1 (get-param :shinobi :glide :back-speed))))
+    (x-speed (* -1 (get-param :shinobi :glide :back-speed)))
+  (y-speed (get-param :shinobi :glide :first-y-speed)))
 
 (defun.ps+ get-return-speed ()
   (get-param :shinobi :on-ground :return-speed))
@@ -353,7 +353,8 @@
             (set-entity-param shinobi :on-ground-p nil)
             (interrupt-game-state
              (make-gliding-state :shinobi shinobi
-                                 :x-speed (get-param :shinobi :glide-after-climb :x-speed))
+                                 :x-speed (get-param :shinobi :glide-after-climb :x-speed)
+                                 :y-speed (get-param :shinobi :glide-after-climb :y-speed))
              state-manager))))
     (when (out-of-screen-p shinobi)
       (with-slots (x y) (get-ecs-component 'point-2d shinobi)
