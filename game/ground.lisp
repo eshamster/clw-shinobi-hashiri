@@ -175,17 +175,6 @@ If the entity is deleted, the func is also deleted"
                       (min (+ speed (get-param :ground :scroll :accell))
                            (get-param :ground :scroll :max)))))
 
-;; Definition of stage
-;; ((height distance [:name "name"]) (height distance [:name "name"]) ...)
-(defmacro.ps+ create-stage (&rest def)
-  `(list ,@(mapcar (lambda (block-def)
-                     (destructuring-bind (height width &key name)
-                         block-def
-                       `(make-wall :height ,height
-                                   :width ,width
-                                   :name ,name)))
-                   def)))
-
 (defmacro.ps+ do-wall-entity ((var ground) &body body)
   `(progn (check-entity-tags ,ground :ground)
           (do-ecs-entities ,var
