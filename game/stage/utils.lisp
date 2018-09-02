@@ -13,6 +13,10 @@
            :stage-info
            :stage-info-fn-get-wall
            :fn-get-wall
+           :stage-info-fn-get-scroll-speed
+           :fn-get-scroll-speed
+           :stage-info-fn-process
+           :fn-process
 
            :wall-is-hole-p))
 (in-package :clw-shinobi-hashiri/game/stage/utils)
@@ -34,4 +38,6 @@
 ;; - stage-info - ;;
 
 (defstruct.ps+ stage-info
-    (fn-get-wall (lambda (id info) (declare (ignore id info)))))
+    (fn-get-wall (lambda (id info) (declare (ignore id info))))
+  (fn-get-scroll-speed (lambda (info) (declare (ignore info))))
+  (fn-process (lambda (info) (declare (ignore info)))))

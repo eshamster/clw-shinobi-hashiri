@@ -10,6 +10,8 @@
 
                 :stage-info
                 :fn-get-wall
+                :fn-get-scroll-speed
+                :fn-process
 
                 :wall-is-hole-p))
 (in-package :clw-shinobi-hashiri/game/stage/regular)
@@ -21,15 +23,19 @@
      (:height (:min #ly50 :max #ly800
                :diff (:min #ly50 :max #ly500))
       :width (:min #lx30 :max #lx400)
-      :hole (:ratio 0.3 :min #lx80 :max #lx300))))
+      :hole (:ratio 0.3 :min #lx80 :max #lx300)
+      :scroll (:first #lx3 :max #lx8 :accell #lx0.001))))
 
 (defstruct.ps+
     (random-stage-info
      (:include stage-info
-               (fn-get-wall #'get-wall-randomly)))
+               (fn-get-wall #'get-wall-randomly)
+               (fn-get-scroll-speed #'get-scroll-speed)
+               (fn-process #'process-regular-stage)))
     pre-wall
   (pre-is-hole-p nil)
-  random-params)
+  random-params
+  scroll-speed)
 
 (defun.ps-only random1 () (random))
 (defun random1 () (random 1.0))
@@ -74,5 +80,18 @@
                        pre-is-hole-p nil)))
       result)))
 
+(defun.ps+ get-scroll-speed (info)
+  (random-stage-info-scroll-speed info))
+
+(defun.ps+ process-regular-stage (info)
+  (symbol-macrolet ((speed (random-stage-info-scroll-speed info)))
+    (let ((params (random-stage-info-random-params info)))
+      (setf speed
+            (min (+ speed (get-layered-hash params :scroll :accell))
+                 (get-layered-hash params :scroll :max))))))
+
 (defun.ps+ init-random-stage-info (&optional (params *random-generator-params*))
-  (make-random-stage-info :random-params params))
+  (let ((info (make-random-stage-info :random-params params)))
+    (setf (random-stage-info-scroll-speed info)
+          (get-layered-hash params :scroll :first))
+    info))

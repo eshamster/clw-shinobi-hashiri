@@ -18,7 +18,9 @@
                 :wall-width
                 :wall-height
                 :clone-wall
-                :stage-info-fn-get-wall)
+                :stage-info-fn-get-wall
+                :stage-info-fn-get-scroll-speed
+                :stage-info-fn-process)
   (:import-from :clw-shinobi-hashiri/game/stage/regular
                 :init-random-stage-info)
   (:import-from :alexandria
@@ -78,8 +80,7 @@ If the entity is deleted, the func is also deleted"
                                     (lambda () (delete-ecs-entity entity)))))))))
     entity))
 
-(defun.ps+ generate-required-walls (manager ground &optional latest-wall)
-  (check-type manager stage-manager)
+(defun.ps+ generate-required-walls (ground &optional latest-wall)
   (check-entity-tags ground :ground)
   (when latest-wall
     (check-entity-tags latest-wall :wall))
@@ -91,7 +92,8 @@ If the entity is deleted, the func is also deleted"
                            :next-id 0))))
     (when (< (getf params :right)
              (get-param :field :width))
-      (let* ((stage-info (stage-manager-stage-info manager))
+      (let* ((manager (get-entity-param ground :stage-manager))
+             (stage-info (stage-manager-stage-info manager))
              (get-wall (stage-info-fn-get-wall stage-info))
              (next-id (getf params :next-id))
              (next-wall-cmp (funcall get-wall next-id stage-info)))
@@ -111,7 +113,9 @@ If the entity is deleted, the func is also deleted"
   (find-a-entity-by-tag :ground))
 
 (defun.ps+ get-scroll-speed (&optional (ground (find-ground)))
-  (get-entity-param ground :scroll-speed))
+  (let* ((manager (get-entity-param ground :stage-manager))
+         (info (stage-manager-stage-info manager)))
+    (funcall (stage-info-fn-get-scroll-speed info) info)))
 
 (defun.ps+ get-wall-info (wall-entity)
   (let ((wall-cmp (get-ecs-component 'wall wall-entity)))
@@ -168,12 +172,11 @@ If the entity is deleted, the func is also deleted"
                       (lambda () (remhash entity on-scroll-hash))))))
              on-scroll-hash)))
 
-(defun.ps+ update-scroll-speed (ground)
+(defun.ps+ process-stage-info (ground)
   (check-entity-tags ground :ground)
-  (let ((speed (get-scroll-speed ground)))
-    (set-entity-param ground :scroll-speed
-                      (min (+ speed (get-param :ground :scroll :accell))
-                           (get-param :ground :scroll :max)))))
+  (let* ((manager (get-entity-param ground :stage-manager))
+         (info (stage-manager-stage-info manager)))
+    (funcall (stage-info-fn-process info) info)))
 
 (defmacro.ps+ do-wall-entity ((var ground) &body body)
   `(progn (check-entity-tags ,ground :ground)
@@ -211,11 +214,11 @@ If the entity is deleted, the func is also deleted"
      ground
      (make-point-2d)
      (make-script-2d :func (lambda (entity)
-                             (generate-required-walls stage-manager entity)
+                             (generate-required-walls entity)
                              (scroll-ground entity)
-                             (update-scroll-speed entity)
+                             (process-stage-info entity)
                              (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)
-                         :scroll-speed (get-param :ground :scroll :first)))
+                         :stage-manager stage-manager))
     (add-ecs-entity ground parent)
     ground))
