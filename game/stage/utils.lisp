@@ -4,6 +4,7 @@
         :cl-ps-ecs
         :cl-web-2d-game)
   (:export :make-wall
+           :make-hole
            :wall
            :wall-id
            :wall-width
@@ -31,6 +32,10 @@
 (defun.ps+ clone-wall (wall)
   (with-slots (id height width name) wall
     (make-wall :id id :height height :width width :name name)))
+
+(defun.ps+ make-hole (&key width)
+  (make-wall :width width
+             :height -1))
 
 (defun.ps+ wall-is-hole-p (wall-cmp)
   (< (wall-height wall-cmp) 0))

@@ -208,7 +208,7 @@ If the entity is deleted, the func is also deleted"
   (let* ((ground (make-ecs-entity))
          (stage-manager
           (make-stage-manager
-           :stage-info (init-random-stage-info))))
+           :stage-info (init-random-stage-info :needle))))
     (add-entity-tag ground :ground)
     (add-ecs-component-list
      ground

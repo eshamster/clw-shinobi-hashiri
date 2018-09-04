@@ -6,6 +6,7 @@
   (:export :init-random-stage-info)
   (:import-from :clw-shinobi-hashiri/game/stage/utils
                 :make-wall
+                :make-hole
                 :wall-height
 
                 :stage-info
@@ -18,13 +19,21 @@
 
 ;; --- random stage generator --- ;;
 
-(defvar.ps+ *random-generator-params*
+(defvar.ps+ *regular-generator-params*
     (convert-to-layered-hash
      (:height (:min #ly50 :max #ly800
                :diff (:min #ly50 :max #ly500))
       :width (:min #lx30 :max #lx400)
       :hole (:ratio 0.3 :min #lx80 :max #lx300)
       :scroll (:first #lx3 :max #lx8 :accell #lx0.001))))
+
+(defvar.ps+ *needle-generator-params*
+    (convert-to-layered-hash
+     (:height (:min #ly300 :max #ly800
+               :diff (:min #ly50 :max #ly500))
+      :width (:min #lx30 :max #lx30)
+      :hole (:ratio 1 :min #lx150 :max #lx350)
+      :scroll (:first #lx3 :max #lx7.5 :accell #lx0.001))))
 
 (defstruct.ps+
     (random-stage-info
@@ -70,8 +79,7 @@
                  ((and (not pre-is-hole-p)
                        (> (get-layered-hash params :hole :ratio)
                           (random1)))
-                  (make-wall :height -1
-                             :width (get-param-randomly params :hole)))
+                  (make-hole :width (get-param-randomly params :hole)))
                  (t (make-wall :height (calc-next-height params pre-wall)
                                :width (get-param-randomly params :width))))))
       (if (wall-is-hole-p result)
@@ -90,8 +98,11 @@
             (min (+ speed (get-layered-hash params :scroll :accell))
                  (get-layered-hash params :scroll :max))))))
 
-(defun.ps+ init-random-stage-info (&optional (params *random-generator-params*))
-  (let ((info (make-random-stage-info :random-params params)))
-    (setf (random-stage-info-scroll-speed info)
-          (get-layered-hash params :scroll :first))
-    info))
+(defun.ps+ init-random-stage-info (stage-name)
+  (let ((params (ecase stage-name
+                   (:regular *regular-generator-params*)
+                   (:needle *needle-generator-params*))))
+    (let ((info (make-random-stage-info :random-params params)))
+      (setf (random-stage-info-scroll-speed info)
+            (get-layered-hash params :scroll :first))
+      info)))
