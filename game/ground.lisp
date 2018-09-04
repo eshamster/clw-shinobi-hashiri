@@ -105,7 +105,7 @@ If the entity is deleted, the func is also deleted"
                                                  (point-2d-x (get-ecs-component
                                                               'point-2d ground))))))
             (add-ecs-entity-to-buffer new-wall-entity ground)
-            (generate-required-walls manager ground new-wall-entity)))))))
+            (generate-required-walls ground new-wall-entity)))))))
 
 ;; --- gound --- ;;
 
