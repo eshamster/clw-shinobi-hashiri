@@ -374,7 +374,7 @@
 
 ;; --- main --- ;;
 
-(defun.ps+ init-shinobi (parent ground)
+(defun.ps+ init-shinobi (ground)
   (check-entity-tags ground :ground)
   (let ((shinobi (make-ecs-entity))
         (width (get-param :shinobi :width))
@@ -425,4 +425,4 @@
            (setf x (- x scroll-speed))))
        (aset-entity-param entity :scroll-sum (+ it scroll-speed)))
      ground)
-    (add-ecs-entity shinobi parent)))
+    (add-ecs-entity shinobi)))

@@ -12,10 +12,10 @@
 ("cl-ps-ecs" .
  (:class qlot.source.github:source-github
   :initargs (:project-name "cl-ps-ecs" :repos "eshamster/cl-ps-ecs" :ref nil :branch nil :tag nil)
-  :version "github-162eb35372d55ada3a2b58d80e004d7130c5462e"
+  :version "github-4cbfd4568414e6d4e4f9d64850ca8f3fb03430f5"
   :repos "eshamster/cl-ps-ecs"
-  :url "https://github.com/eshamster/cl-ps-ecs/archive/162eb35372d55ada3a2b58d80e004d7130c5462e.tar.gz"
-  :ref "162eb35372d55ada3a2b58d80e004d7130c5462e"))
+  :url "https://github.com/eshamster/cl-ps-ecs/archive/4cbfd4568414e6d4e4f9d64850ca8f3fb03430f5.tar.gz"
+  :ref "4cbfd4568414e6d4e4f9d64850ca8f3fb03430f5"))
 ("cl-web-2d-game" .
  (:class qlot.source.github:source-github
   :initargs (:project-name "cl-web-2d-game" :repos "eshamster/cl-web-2d-game" :ref nil :branch nil :tag nil)

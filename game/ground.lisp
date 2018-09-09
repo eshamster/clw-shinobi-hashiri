@@ -208,7 +208,7 @@ If the entity is deleted, the func is also deleted"
 (defun.ps+ get-stage-kind-list ()
   (list :regular :needle))
 
-(defun.ps+ init-ground (parent stage-kind)
+(defun.ps+ init-ground (stage-kind)
   (let* ((ground (make-ecs-entity))
          (stage-manager
           (make-stage-manager
@@ -224,5 +224,5 @@ If the entity is deleted, the func is also deleted"
                              (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)
                          :stage-manager stage-manager))
-    (add-ecs-entity ground parent)
+    (add-ecs-entity ground)
     ground))
