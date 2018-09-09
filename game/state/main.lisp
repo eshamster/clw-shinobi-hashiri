@@ -12,7 +12,7 @@
                 :get-depth))
 (in-package :clw-shinobi-hashiri/game/state/main)
 
-(def-game-state main ((parent (make-ecs-entity)))
+(def-game-state main ((parent (make-ecs-entity)) stage-kind)
   :start-process
   (lambda (_this)
     (let ((parent (slot-value _this 'parent)))
@@ -26,7 +26,8 @@
                                                 :color #xeeeeee)
                         :depth (get-depth :field)))
         (add-ecs-entity background parent)
-        (let ((ground (init-ground parent)))
+        (let ((ground (init-ground parent
+                                   (slot-value _this 'stage-kind))))
           (init-shinobi parent ground))))
     t)
   :process

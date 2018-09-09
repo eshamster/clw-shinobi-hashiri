@@ -8,7 +8,8 @@
            :add-on-ground-scroll
            :get-wall-info
            :get-highest-wall-info
-           :get-scroll-speed)
+           :get-scroll-speed
+           :get-stage-kind-list)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
                 :get-depth)
@@ -204,11 +205,14 @@ If the entity is deleted, the func is also deleted"
     (add-to-monitoring-log
      (+ "Ground: Min ID=" min-id ",Max ID=" max-id))))
 
-(defun.ps+ init-ground (parent)
+(defun.ps+ get-stage-kind-list ()
+  (list :regular :needle))
+
+(defun.ps+ init-ground (parent stage-kind)
   (let* ((ground (make-ecs-entity))
          (stage-manager
           (make-stage-manager
-           :stage-info (init-random-stage-info :needle))))
+           :stage-info (init-random-stage-info stage-kind))))
     (add-entity-tag ground :ground)
     (add-ecs-component-list
      ground

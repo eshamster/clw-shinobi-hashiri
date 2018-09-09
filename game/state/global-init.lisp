@@ -17,7 +17,4 @@
   :process
   (lambda (_this)
     (declare (ignore _this))
-    (make-state :main))
-  :end-process
-  (lambda (_this)
-    t))
+    (make-state :menu)))
