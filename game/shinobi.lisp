@@ -75,7 +75,7 @@
 
 ;; TODO: Split controller
 
-(defstruct.ps+ (shinobi-state (:include game-state)) shinobi)
+(defstruct.ps+ (shinobi-state (:include game-state)) shinobi (scroll-p nil))
 
 (defstruct.ps+
     (jumping-state
@@ -204,7 +204,8 @@
 
 ;; - climb states - ;;
 
-(defstruct.ps+ (climb-state (:include shinobi-state))
+(defstruct.ps+ (climb-state (:include shinobi-state
+                                      (scroll-p t)))
     target-wall)
 
 (defstruct.ps+
@@ -212,7 +213,6 @@
      (:include climb-state
                (start-process (lambda (state)
                                 (with-slots (shinobi target-wall) state
-                                  (set-entity-param shinobi :scroll-p t)
                                   (stop-gravity shinobi)
                                   (with-ecs-components (speed-2d point-2d) shinobi
                                     (setf (speed-2d-y speed-2d) 0)
@@ -233,7 +233,6 @@
                (end-process (lambda (state)
                               (let ((shinobi (shinobi-state-shinobi state)))
                                 (when (not (typep (get-next-state shinobi) 'climb-state))
-                                  (set-entity-param shinobi :scroll-p nil)
                                   (start-gravity shinobi)))
                               t)))))
 
@@ -242,7 +241,6 @@
      (:include climb-state
                (start-process (lambda (state)
                                 (let ((shinobi (shinobi-state-shinobi state)))
-                                  (set-entity-param shinobi :scroll-p t)
                                   (start-gravity shinobi))
                                 t))
                (process (lambda (state)
@@ -259,12 +257,7 @@
                             (when (precede-my-key-p :up 3)
                               (with-slots (target-wall) state
                                 (make-holding-wall-state :shinobi shinobi
-                                                         :target-wall target-wall))))))
-               (end-process (lambda (state)
-                              (let ((shinobi (shinobi-state-shinobi state)))
-                                (when (not (typep (get-next-state shinobi) 'climb-state))
-                                  (set-entity-param shinobi :scroll-p nil)))
-                              t))))
+                                                         :target-wall target-wall))))))))
     (time 0))
 
 ;; - state utils - ;;
@@ -420,7 +413,6 @@
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down
                            :on-ground-p nil
-                           :scroll-p nil
                            :has-glided-p nil
                            :width width
                            :height height
@@ -428,7 +420,7 @@
     (add-on-ground-scroll
      shinobi
      (lambda (entity scroll-speed)
-       (when (get-entity-param entity :scroll-p)
+       (when (shinobi-state-scroll-p (get-current-state entity))
          (symbol-macrolet ((x (point-2d-x (get-ecs-component 'point-2d entity))))
            (setf x (- x scroll-speed))))
        (aset-entity-param entity :scroll-sum (+ it scroll-speed)))
