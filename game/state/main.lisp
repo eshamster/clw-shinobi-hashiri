@@ -31,4 +31,10 @@
   :process
   (lambda (_this)
     (declare (ignore _this))
-    nil))
+    (when (is-key-up-now :escape)
+      (make-state :menu)))
+  :end-process
+  (lambda (_this)
+    (register-next-frame-func
+     (lambda () (delete-ecs-entity (slot-value _this 'parent))))
+    t))

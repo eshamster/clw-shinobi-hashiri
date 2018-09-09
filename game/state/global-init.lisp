@@ -13,6 +13,7 @@
     (declare (ignore _this))
     (load-font "js/")
     (register-ecs-system :gravity (make-gravity-system))
+    (start-key-monitoring :escape "escape")
     t)
   :process
   (lambda (_this)
