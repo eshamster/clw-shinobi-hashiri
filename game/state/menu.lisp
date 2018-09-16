@@ -51,20 +51,19 @@
 (def-game-state menu ((parent (make-ecs-entity))
                       (selector (init-stage-selector)))
   :start-process
-  (lambda (_this)
-    (add-ecs-entity (slot-value _this 'parent))
+  (state-lambda (parent)
+    (add-ecs-entity parent)
     ;; TODO: Visualize.
     (add-to-event-log "Push z key to start.")
     t)
   :process
-  (lambda (_this)
-    (let ((selector (slot-value _this 'selector)))
-      (process-selector selector)
-      (when (is-key-down-now :a)
-        (make-state :main
-                    :stage-kind (get-stage-kind selector)))))
+  (state-lambda (selector)
+    (process-selector selector)
+    (when (is-key-down-now :a)
+      (make-state :main
+                  :stage-kind (get-stage-kind selector))))
   :end-process
-  (lambda (_this)
+  (state-lambda (parent)
     (register-next-frame-func
-     (lambda () (delete-ecs-entity (slot-value _this 'parent))))
+     (lambda () (delete-ecs-entity parent)))
     t))

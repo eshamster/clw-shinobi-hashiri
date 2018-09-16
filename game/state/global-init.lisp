@@ -9,13 +9,11 @@
 
 (def-game-state global-init ()
   :start-process
-  (lambda (_this)
-    (declare (ignore _this))
+  (state-lambda ()
     (load-font "js/")
     (register-ecs-system :gravity (make-gravity-system))
     (start-key-monitoring :escape "escape")
     t)
   :process
-  (lambda (_this)
-    (declare (ignore _this))
+  (state-lambda ()
     (make-state :menu)))

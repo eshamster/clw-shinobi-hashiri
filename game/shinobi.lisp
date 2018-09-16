@@ -80,21 +80,18 @@
 (defstruct.ps+
     (jumping-state
      (:include shinobi-state
-               (start-process (lambda (state)
-                                (let ((shinobi (shinobi-state-shinobi state)))
-                                  (set-entity-param shinobi :on-ground-p nil))
+               (start-process (state-lambda (shinobi)
+                                (set-entity-param shinobi :on-ground-p nil)
                                 t))
-               (process (lambda (state)
-                          (let ((shinobi (shinobi-state-shinobi state)))
-                            (set-entity-param shinobi :on-ground-p nil)
-                            (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
-                                  (get-param :shinobi :jump :speed))
-                            (symbol-macrolet ((duration (jumping-state-duration state)))
-                              (decf duration)
-                              (cond ((precede-my-key-p :up 3)
-                                     (make-falling-state :shinobi shinobi))
-                                    ((<= duration 0)
-                                     (make-gliding-state :shinobi shinobi)))))))))
+               (process (state-lambda (shinobi duration)
+                          (set-entity-param shinobi :on-ground-p nil)
+                          (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+                                (get-param :shinobi :jump :speed))
+                          (decf duration)
+                          (cond ((precede-my-key-p :up 3)
+                                 (make-falling-state :shinobi shinobi))
+                                ((<= duration 0)
+                                 (make-gliding-state :shinobi shinobi)))))))
   (duration (get-param :shinobi :jump :max-time)))
 
 (defun.ps+ land-immediately (shinobi)
@@ -105,8 +102,8 @@
     (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
           0)))
 
-(defun.ps+ process-in-falling-process (state)
-  (let ((shinobi (shinobi-state-shinobi state)))
+(defun.ps+ make-process-in-falling ()
+  (state-lambda (shinobi)
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
           ((precede-my-key-p :down 5)
@@ -121,10 +118,10 @@
 (defstruct.ps+
     (falling-state
      (:include shinobi-state
-               (process #'process-in-falling-process))))
+               (process (make-process-in-falling)))))
 
-(defun.ps+ process-in-gliding (state)
-  (let ((shinobi (shinobi-state-shinobi state)))
+(defun.ps+ make-process-in-gliding ()
+  (state-lambda (shinobi)
     (with-ecs-components (point-2d speed-2d) shinobi
       (let ((x-max (get-param :shinobi :on-ground :default-x)))
         (symbol-macrolet ((pnt-x (point-2d-x point-2d))
@@ -141,33 +138,29 @@
           ((precede-my-key-p :up 5)
            (make-falling-state :shinobi shinobi)))))
 
-(defun.ps+ setf-gravity-rate (state rate)
-  (check-type state shinobi-state)
-  (let ((shinobi (shinobi-state-shinobi state)))
-    (setf (gravity-decrease-rate (get-ecs-component 'gravity shinobi))
-          rate)))
+(defun.ps+ setf-gravity-rate (shinobi rate)
+  (check-entity-tags shinobi :shinobi)
+  (setf (gravity-decrease-rate (get-ecs-component 'gravity shinobi))
+        rate))
 
 ;; TODO: Decrease speed (go back) according to scroll speed
 (defstruct.ps+
     (gliding-state
      (:include shinobi-state
-               (start-process (lambda (state)
-                                (setf-gravity-rate state
+               (start-process (state-lambda (shinobi x-speed y-speed)
+                                (setf-gravity-rate shinobi
                                                    (get-param :shinobi :glide :gravity-rate))
-                                (let* ((shinobi (shinobi-state-shinobi state))
-                                       (speed (get-ecs-component 'speed-2d shinobi)))
-                                  (setf (speed-2d-x speed)
-                                        (gliding-state-x-speed state))
+                                (let ((speed (get-ecs-component 'speed-2d shinobi)))
+                                  (setf (speed-2d-x speed) x-speed)
                                   (unless (get-entity-param shinobi :has-glided-p)
                                     (set-entity-param shinobi :has-glided-p t)
-                                    (setf (speed-2d-y speed) (gliding-state-y-speed state))))
+                                    (setf (speed-2d-y speed) y-speed)))
                                 t))
-               (process #'process-in-gliding)
-               (end-process (lambda (state)
-                              (let* ((shinobi (shinobi-state-shinobi state))
-                                     (speed (get-ecs-component 'speed-2d shinobi)))
+               (process (make-process-in-gliding))
+               (end-process (state-lambda (shinobi)
+                              (let ((speed (get-ecs-component 'speed-2d shinobi)))
                                 (setf (speed-2d-x speed) 0))
-                              (setf-gravity-rate state 1)
+                              (setf-gravity-rate shinobi 1)
                               t))))
     (x-speed (* -1 (get-param :shinobi :glide :back-speed)))
   (y-speed (get-param :shinobi :glide :first-y-speed)))
@@ -182,13 +175,11 @@
 (defstruct.ps+
     (on-ground-state
      (:include shinobi-state
-               (start-process (lambda (state)
-                                (let ((shinobi (shinobi-state-shinobi state)))
-                                  (set-entity-param shinobi :has-glided-p nil))
+               (start-process (state-lambda (shinobi)
+                                (set-entity-param shinobi :has-glided-p nil)
                                 t))
-               (process (lambda (state)
-                          (let* ((shinobi (shinobi-state-shinobi state))
-                                 (default-x (get-param :shinobi :on-ground :default-x))
+               (process (state-lambda (shinobi)
+                          (let* ((default-x (get-param :shinobi :on-ground :default-x))
                                  (speed (get-return-speed))
                                  (point (get-ecs-component 'point-2d shinobi))
                                  (tolerance-height #ly0.0001))
@@ -211,53 +202,46 @@
 (defstruct.ps+
     (holding-wall-state
      (:include climb-state
-               (start-process (lambda (state)
-                                (with-slots (shinobi target-wall) state
-                                  (stop-gravity shinobi)
-                                  (with-ecs-components (speed-2d point-2d) shinobi
-                                    (setf (speed-2d-y speed-2d) 0)
-                                    (when (find-the-entity target-wall)
-                                      (symbol-macrolet ((x (point-2d-x point-2d)))
-                                        (setf x (- (point-2d-x
-                                                    (calc-global-point target-wall))
-                                                   (* 1/2 (get-entity-param shinobi :width))
-                                                   ;; Offset to avoid from sinking into wall
-                                                   ;; caused by calculation error
-                                                   #lx0.01))))))
+               (start-process (state-lambda (shinobi target-wall)
+                                (stop-gravity shinobi)
+                                (with-ecs-components (speed-2d point-2d) shinobi
+                                  (setf (speed-2d-y speed-2d) 0)
+                                  (when (find-the-entity target-wall)
+                                    (symbol-macrolet ((x (point-2d-x point-2d)))
+                                      (setf x (- (point-2d-x
+                                                  (calc-global-point target-wall))
+                                                 (* 1/2 (get-entity-param shinobi :width))
+                                                 ;; Offset to avoid from sinking into wall
+                                                 ;; caused by calculation error
+                                                 #lx0.01)))))
                                 t))
-               (process (lambda (state)
+               (process (state-lambda (shinobi target-wall)
                           (when (is-my-key-down)
-                            (with-slots (shinobi target-wall) state
-                              (make-climb-jumping-state :shinobi shinobi
-                                                        :target-wall target-wall)))))
-               (end-process (lambda (state)
-                              (let ((shinobi (shinobi-state-shinobi state)))
-                                (when (not (typep (get-next-state shinobi) 'climb-state))
-                                  (start-gravity shinobi)))
+                            (make-climb-jumping-state :shinobi shinobi
+                                                      :target-wall target-wall))))
+               (end-process (state-lambda (shinobi)
+                              (when (not (typep (get-next-state shinobi) 'climb-state))
+                                (start-gravity shinobi))
                               t)))))
 
 (defstruct.ps+
     (climb-jumping-state
      (:include climb-state
-               (start-process (lambda (state)
-                                (let ((shinobi (shinobi-state-shinobi state)))
-                                  (start-gravity shinobi))
+               (start-process (state-lambda (shinobi)
+                                (start-gravity shinobi)
                                 t))
-               (process (lambda (state)
+               (process (state-lambda (shinobi target-wall time)
                           ;; XXX: Search length should be decided according to tolerance
-                          (let ((shinobi (shinobi-state-shinobi state))
-                                (duration (get-param :shinobi :climb-jump :duration))
+                          (let ((duration (get-param :shinobi :climb-jump :duration))
                                 (min-speed (get-param :shinobi :climb-jump :min-speed))
                                 (max-speed (get-param :shinobi :climb-jump :max-speed)))
-                            (symbol-macrolet ((time (climb-jumping-state-time state)))
-                              (when (< time duration)
-                                (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
-                                      (lerp-scalar min-speed max-speed (/ time duration))))
-                              (incf time))
+                            (when (< time duration)
+                              (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
+                                    (lerp-scalar min-speed max-speed (/ time duration))))
+                            (incf time)
                             (when (precede-my-key-p :up 3)
-                              (with-slots (target-wall) state
-                                (make-holding-wall-state :shinobi shinobi
-                                                         :target-wall target-wall))))))))
+                              (make-holding-wall-state :shinobi shinobi
+                                                       :target-wall target-wall)))))))
     (time 0))
 
 ;; - state utils - ;;

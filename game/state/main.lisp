@@ -14,8 +14,8 @@
 
 (def-game-state main ((parent (make-ecs-entity)) stage-kind)
   :start-process
-  (lambda (_this)
-    (with-ecs-entity-parent ((slot-value _this 'parent))
+  (state-lambda (parent stage-kind)
+    (with-ecs-entity-parent (parent)
       (let ((background (make-ecs-entity)))
         (add-ecs-component-list
          background
@@ -25,16 +25,15 @@
                                                 :color #xeeeeee)
                         :depth (get-depth :field)))
         (add-ecs-entity background)
-        (let ((ground (init-ground (slot-value _this 'stage-kind))))
+        (let ((ground (init-ground stage-kind)))
           (init-shinobi ground))))
     t)
   :process
-  (lambda (_this)
-    (declare (ignore _this))
+  (state-lambda ()
     (when (is-key-up-now :escape)
       (make-state :menu)))
   :end-process
-  (lambda (_this)
+  (state-lambda (parent)
     (register-next-frame-func
-     (lambda () (delete-ecs-entity (slot-value _this 'parent))))
+     (lambda () (delete-ecs-entity parent)))
     t))
