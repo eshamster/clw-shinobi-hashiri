@@ -7,10 +7,15 @@
                 :make-gravity-system))
 (in-package :clw-shinobi-hashiri/game/state/global-init)
 
+(defun.ps+ load-images ()
+  (load-texture :name "logo"
+                :path "/images/logo.png"))
+
 (def-game-state global-init ()
   :start-process
   (state-lambda ()
     (load-font "js/")
+    (load-images)
     (register-ecs-system :gravity (make-gravity-system))
     (start-key-monitoring :escape "escape")
     t)

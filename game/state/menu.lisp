@@ -46,15 +46,34 @@
     (select-previous-stage selector)
     (update-selector-display selector)))
 
+(defun.ps+ add-logo ()
+  (frame-promise-then
+   (make-texture-model-promise :width #lx800 :texture-name "logo")
+   (lambda (model)
+     (let ((logo (make-ecs-entity)))
+       (add-ecs-component-list
+        logo
+        (make-point-2d :x #lx20 :y #ly500)
+        (make-model-2d :model model))
+       (add-ecs-entity logo)))))
+
 ;; --- state --- ;;
 
 (def-game-state menu ((parent (make-ecs-entity))
                       (selector (init-stage-selector)))
   :start-process
   (state-lambda (parent)
-    (add-ecs-entity parent)
-    ;; TODO: Visualize.
-    (add-to-event-log "Push z key to start.")
+    (with-ecs-entity-parent (parent)
+      (let ((area (make-text-area :font-size 20
+                                  :text-align :right)))
+        (add-text-to-area area
+                          :text "Press z key to start ..."
+                          :color #xffffff)
+        (add-ecs-component-list
+         area
+         (make-point-2d :x #lx980 :y #ly80))
+        (add-ecs-entity area))
+      (add-logo))
     t)
   :process
   (state-lambda (selector)
