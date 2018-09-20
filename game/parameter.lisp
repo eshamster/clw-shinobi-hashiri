@@ -3,7 +3,8 @@
         :ps-experiment
         :cl-web-2d-game)
   (:export :get-param
-           :get-depth))
+           :get-depth
+           :get-state-param))
 (in-package :clw-shinobi-hashiri/game/parameter)
 
 (eval-when (:execute :compile-toplevel :load-toplevel)
@@ -52,3 +53,18 @@
 
 (defmacro.ps+ get-depth (&rest keys)
   `(get-layered-hash *depth* ,@keys))
+
+(defvar.ps+ *state-params*
+  (convert-to-layered-hash
+   (:menu (:logo (:x #lx20 :y #ly500
+                  :width #lx800)
+           :selector (:x #lx240 :y #ly350
+                      :item (:text-size 30
+                             :height #ly80)
+                      :cursor (:offset-x #lx10
+                               :width #lx15 :height #lx30))
+           :press-key-info (:text-size 20
+                            :x #lx50 :y #ly80)))))
+
+(defmacro.ps+ get-state-param (&rest keys)
+  `(get-layered-hash *state-params* ,@keys))
