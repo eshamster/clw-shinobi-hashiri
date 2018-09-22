@@ -18,7 +18,10 @@
                 :get-scroll-speed)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
-                :get-depth))
+                :get-depth)
+  (:import-from :clw-shinobi-hashiri/game/score-board
+                :update-score-board
+                :finalize-current-score))
 (in-package :clw-shinobi-hashiri/game/shinobi)
 
 ;; --- utils --- ;;
@@ -345,7 +348,7 @@
               y (+ (get-param :field :height) #ly20)))
       (with-slots (x y) (get-ecs-component 'speed-2d shinobi)
         (setf x 0 y 0))
-      (add-to-event-log (+ "run dist: " (calc-run-dist shinobi)))
+      (finalize-current-score)
       (set-entity-param shinobi :scroll-sum 0)
       (interrupt-game-state
        (make-falling-state :shinobi shinobi)
@@ -387,12 +390,11 @@
                                              :y (* -1/2 height)))
        (make-script-2d :func (lambda (entity)
                                (process-jump-state entity)
+                               (update-score-board :moved-length (calc-run-dist entity))
                                (debug-print-state entity)
                                (with-ecs-components (point-2d) entity
                                  (add-to-monitoring-log (+ "x: " (point-2d-x point-2d)))
-                                 (add-to-monitoring-log (+ "y: " (point-2d-y point-2d))))
-                               (add-to-monitoring-log
-                                (+ "run dist: " (calc-run-dist entity)))))
+                                 (add-to-monitoring-log (+ "y: " (point-2d-y point-2d))))))
        (init-entity-params :jump-state-manager
                            (init-game-state-manager (make-falling-state :shinobi shinobi))
                            :jump-input-state :up ;; up-now up down-now down

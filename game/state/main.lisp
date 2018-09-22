@@ -5,11 +5,13 @@
         :cl-web-2d-game)
   (:import-from :clw-shinobi-hashiri/game/ground
                 :init-ground)
-  (:import-from :clw-shinobi-hashiri/game/shinobi
-                :init-shinobi)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
-                :get-depth))
+                :get-depth)
+  (:import-from :clw-shinobi-hashiri/game/score-board
+                :init-score-board)
+  (:import-from :clw-shinobi-hashiri/game/shinobi
+                :init-shinobi))
 (in-package :clw-shinobi-hashiri/game/state/main)
 
 (def-game-state main ((parent (make-ecs-entity)) stage-kind)
@@ -25,6 +27,7 @@
                                                 :color #xeeeeee)
                         :depth (get-depth :field)))
         (add-ecs-entity background)
+        (init-score-board)
         (let ((ground (init-ground stage-kind)))
           (init-shinobi ground))))
     t)
