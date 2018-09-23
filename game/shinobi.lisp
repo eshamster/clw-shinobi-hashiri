@@ -3,7 +3,9 @@
         :ps-experiment
         :cl-ps-ecs
         :cl-web-2d-game)
-  (:export :init-shinobi)
+  (:export :init-shinobi
+           :press-action-key
+           :release-action-key)
   (:import-from :clw-shinobi-hashiri/game/gravity
                 :gravity
                 :make-gravity
@@ -53,26 +55,44 @@
 
 (defvar.ps+ *jump-key* :a)
 
-(defun.ps+ is-my-key-down-now ()
-  (is-key-down-now *jump-key*))
-(defun.ps+ is-my-key-down ()
-  (is-key-down *jump-key*))
-(defun.ps+ is-my-key-up-now ()
-  (is-key-up-now *jump-key*))
-(defun.ps+ is-my-key-up ()
-  (is-key-up *jump-key*))
+(defstruct.ps+ my-key-state pressed-p (pressed-count 0))
 
-(defun.ps+ my-key-down-count ()
-  (key-down-count *jump-key*))
-(defun.ps+ my-key-up-count ()
-  (key-up-count *jump-key*))
+(defun.ps+ get-key-state (shinobi)
+  (get-entity-param shinobi :key-state))
 
-(defun.ps+ precede-my-key-p (up-or-down allowed-frame)
-  (ecase up-or-down
-    (:up (and (is-my-key-up)
-              (< (my-key-up-count) allowed-frame)))
-    (:down (and (is-my-key-down)
-              (< (my-key-down-count) allowed-frame)))))
+(defun.ps+ process-keystate (shinobi)
+  (with-slots (pressed-count)
+      (get-key-state shinobi)
+    (incf pressed-count)))
+
+(defun.ps+ press-action-key (&optional (shinobi (find-shinobi)))
+  (with-slots (pressed-p pressed-count)
+      (get-key-state shinobi)
+    (unless pressed-p
+      (setf pressed-p t
+            pressed-count 0))))
+
+(defun.ps+ release-action-key (&optional (shinobi (find-shinobi)))
+  (with-slots (pressed-p pressed-count)
+      (get-key-state shinobi)
+    (when pressed-p
+      (setf pressed-p nil
+            pressed-count 0))))
+
+(defun.ps+ is-my-key-down (shinobi)
+  (my-key-state-pressed-p (get-key-state shinobi)))
+
+(defun.ps+ is-my-key-up (shinobi)
+  (not (my-key-state-pressed-p (get-key-state shinobi))))
+
+(defun.ps+ precede-my-key-p (shinobi up-or-down allowed-frame)
+  (with-slots (pressed-p pressed-count)
+      (get-key-state shinobi)
+    (ecase up-or-down
+      (:up (and (not pressed-p)
+                (< pressed-count allowed-frame)))
+      (:down (and pressed-p
+                  (< pressed-count allowed-frame))))))
 
 ;; --- jump --- ;;
 
@@ -91,7 +111,7 @@
                           (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
                                 (get-param :shinobi :jump :speed))
                           (decf duration)
-                          (cond ((precede-my-key-p :up 3)
+                          (cond ((precede-my-key-p shinobi :up 3)
                                  (make-falling-state :shinobi shinobi))
                                 ((<= duration 0)
                                  (make-gliding-state :shinobi shinobi)))))))
@@ -109,7 +129,7 @@
   (state-lambda (shinobi)
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
-          ((precede-my-key-p :down 5)
+          ((precede-my-key-p shinobi :down 5)
            (if (>= (get-my-ground-height shinobi) 0)
                (progn
                  (land-immediately shinobi)
@@ -138,7 +158,7 @@
             (setf y max-speed)))))
     (cond ((get-entity-param shinobi :on-ground-p)
            (make-on-ground-state :shinobi shinobi))
-          ((precede-my-key-p :up 5)
+          ((precede-my-key-p shinobi :up 5)
            (make-falling-state :shinobi shinobi)))))
 
 (defun.ps+ setf-gravity-rate (shinobi rate)
@@ -189,7 +209,7 @@
                             (symbol-macrolet ((x (point-2d-x point)))
                               (when (require-return-p shinobi)
                                 (setf x (min default-x (+ x speed)))))
-                            (cond ((precede-my-key-p :down 3)
+                            (cond ((precede-my-key-p shinobi :down 3)
                                    (make-jumping-state :shinobi shinobi))
                                   ((> (- (get-bottom shinobi) tolerance-height)
                                       (get-my-ground-height shinobi))
@@ -219,7 +239,7 @@
                                                  #lx0.01)))))
                                 t))
                (process (state-lambda (shinobi target-wall)
-                          (when (is-my-key-down)
+                          (when (is-my-key-down shinobi)
                             (make-climb-jumping-state :shinobi shinobi
                                                       :target-wall target-wall))))
                (end-process (state-lambda (shinobi)
@@ -242,7 +262,7 @@
                               (setf (speed-2d-y (get-ecs-component 'speed-2d shinobi))
                                     (lerp-scalar min-speed max-speed (/ time duration))))
                             (incf time)
-                            (when (precede-my-key-p :up 3)
+                            (when (precede-my-key-p shinobi :up 3)
                               (make-holding-wall-state :shinobi shinobi
                                                        :target-wall target-wall)))))))
     (time 0))
@@ -389,6 +409,7 @@
                       :offset (make-point-2d :x (* -1/2 width)
                                              :y (* -1/2 height)))
        (make-script-2d :func (lambda (entity)
+                               (process-keystate entity)
                                (process-jump-state entity)
                                (update-score-board :moved-length (calc-run-dist entity))
                                (debug-print-state entity)
@@ -402,7 +423,8 @@
                            :has-glided-p nil
                            :width width
                            :height height
-                           :scroll-sum 0)))
+                           :scroll-sum 0
+                           :key-state (make-my-key-state))))
     (add-on-ground-scroll
      shinobi
      (lambda (entity scroll-speed)

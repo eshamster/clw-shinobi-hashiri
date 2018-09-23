@@ -3,6 +3,8 @@
         :ps-experiment
         :cl-ps-ecs
         :cl-web-2d-game)
+  (:import-from :clw-shinobi-hashiri/game/controller
+                :init-controller)
   (:import-from :clw-shinobi-hashiri/game/ground
                 :init-ground)
   (:import-from :clw-shinobi-hashiri/game/parameter
@@ -28,6 +30,7 @@
                         :depth (get-depth :field)))
         (add-ecs-entity background)
         (init-score-board)
+        (init-controller)
         (let ((ground (init-ground stage-kind)))
           (init-shinobi ground))))
     t)
