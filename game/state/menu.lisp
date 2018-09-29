@@ -152,6 +152,13 @@
         (make-model-2d :model model))
        (add-ecs-entity logo)))))
 
+;; --- controller --- ;;
+
+(defun.ps+ start-game-p ()
+  (or (is-key-down-now :a)
+      (eq (get-left-mouse-state) :down-now)
+      (eq (get-total-touch-state) :down-now)))
+
 ;; --- state --- ;;
 
 (def-game-state menu ((parent (make-ecs-entity)))
@@ -174,7 +181,7 @@
     t)
   :process
   (state-lambda ()
-    (when (is-key-down-now :a)
+    (when (start-game-p)
       (let* ((selector-entity (find-a-entity-by-tag :selector))
              (selector (get-ecs-component 'stage-selector selector-entity)))
         (make-state :main
