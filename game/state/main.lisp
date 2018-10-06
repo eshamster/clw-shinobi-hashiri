@@ -36,7 +36,7 @@
     t)
   :process
   (state-lambda ()
-    (when (is-key-up-now :escape)
+    (when (key-up-now-p :escape)
       (make-state :menu)))
   :end-process
   (state-lambda (parent)

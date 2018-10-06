@@ -24,9 +24,9 @@
 
 (defun.ps+ control-by-keyboard ()
   (dolist (key (list :a :b))
-    (when (is-key-up-now key)
+    (when (key-up-now-p key)
       (release-action-key))
-    (when (is-key-down-now key)
+    (when (key-down-now-p key)
       (press-action-key))))
 
 (defun.ps+ process-controller (entity)

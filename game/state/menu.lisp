@@ -51,10 +51,10 @@
 (defun.ps+ process-selector (selector-entity)
   (check-entity-tags selector-entity :selector)
   (with-ecs-components ((selector stage-selector)) selector-entity
-    (when (is-key-down-now :down)
+    (when (key-down-now-p :down)
       (select-next-stage selector)
       (call-on-change-stage selector))
-    (when (is-key-down-now :up)
+    (when (key-down-now-p :up)
       (select-previous-stage selector)
       (call-on-change-stage selector))))
 
@@ -155,7 +155,7 @@
 ;; --- controller --- ;;
 
 (defun.ps+ start-game-p ()
-  (or (is-key-down-now :a)
+  (or (key-down-now-p :a)
       (eq (get-left-mouse-state) :down-now)
       (eq (get-total-touch-state) :down-now)))
 
