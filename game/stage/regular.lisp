@@ -35,6 +35,14 @@
       :hole (:ratio 1 :min #lx150 :max #lx350)
       :scroll (:first #lx4 :max #lx7.5 :accell #lx0.005))))
 
+(defvar.ps+ *big-hole-generator-params*
+    (convert-to-layered-hash
+     (:height (:min #ly200 :max #ly800
+               :diff (:min #ly100 :max #ly500))
+      :width (:min #lx100 :max #lx400)
+      :hole (:ratio 0.5 :min #lx300 :max #lx800)
+      :scroll (:first #lx4 :max #lx7 :accell #lx0.0025))))
+
 (defstruct.ps+
     (random-stage-info
      (:include stage-info
@@ -101,7 +109,8 @@
 (defun.ps+ init-random-stage-info (stage-name)
   (let ((params (ecase stage-name
                    (:regular *regular-generator-params*)
-                   (:needle *needle-generator-params*))))
+                   (:needle *needle-generator-params*)
+                   (:big-hole *big-hole-generator-params*))))
     (let ((info (make-random-stage-info :random-params params)))
       (setf (random-stage-info-scroll-speed info)
             (get-layered-hash params :scroll :first))

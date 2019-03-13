@@ -206,7 +206,7 @@ If the entity is deleted, the func is also deleted"
      (+ "Ground: Min ID=" min-id ",Max ID=" max-id))))
 
 (defun.ps+ get-stage-kind-list ()
-  (list :regular :needle))
+  (list :regular :needle :big-hole))
 
 (defun.ps+ init-ground (stage-kind)
   (let* ((ground (make-ecs-entity))
