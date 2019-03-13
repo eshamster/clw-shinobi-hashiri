@@ -83,7 +83,7 @@
   (with-slots (pre-wall (params random-params) pre-is-hole-p) info
     (let ((result
            (cond ((null pre-wall)
-                  (make-wall :height #ly50 :width #lx500))
+                  (make-wall :height #ly600 :width #lx800))
                  ((and (not pre-is-hole-p)
                        (> (get-layered-hash params :hole :ratio)
                           (random1)))

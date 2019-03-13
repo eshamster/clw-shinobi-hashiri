@@ -392,7 +392,7 @@
       (add-ecs-component-list
        shinobi
        (make-point-2d :x (get-param :shinobi :on-ground :default-x)
-                      :y 100)
+                      :y #ly900)
        (make-gravity :fn-get-width (lambda (entity)
                                      (declare (ignore entity))
                                      width)
