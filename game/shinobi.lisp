@@ -361,11 +361,15 @@
                      (null (game-state-manager-next-state state-manager)))
             (set-entity-param shinobi :on-ground-p nil)
             (set-scroll-speed-scale 1)
-            (interrupt-game-state
-             (make-gliding-state :shinobi shinobi
-                                 :x-speed (get-param :shinobi :glide-after-climb :x-speed)
-                                 :y-speed (get-param :shinobi :glide-after-climb :y-speed))
-             state-manager))))
+            (with-ecs-components (speed-2d) shinobi
+              (interrupt-game-state
+               (make-gliding-state :shinobi shinobi
+                                   :x-speed (+ (get-param :shinobi :glide-after-climb :x-speed)
+                                               (* (speed-2d-y speed-2d)
+                                                  (get-param :shinobi :glide-after-climb
+                                                             :adding-scale-y-speed-to-x)))
+                                   :y-speed (get-param :shinobi :glide-after-climb :y-speed))
+               state-manager)))))
     (when (out-of-screen-p shinobi)
       (set-scroll-speed-scale 1)
       (with-slots (x y) (get-ecs-component 'point-2d shinobi)

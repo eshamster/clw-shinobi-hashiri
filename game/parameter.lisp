@@ -38,7 +38,8 @@
               ;; TODO: Speed to y direction should be specified by #ly instead of #lx
               :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
                       :back-speed #lx0.4)
-              :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4)
+              :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4
+                                  :adding-scale-y-speed-to-x 0.1)
               :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20)
               :climb (:scroll-speed-scale 0.8))
     :gravity (:accell #ly0.45 :max-speed 20)
