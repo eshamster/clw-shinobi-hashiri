@@ -9,6 +9,7 @@
            :get-wall-info
            :get-highest-wall-info
            :get-scroll-speed
+           :set-scroll-speed-scale
            :get-stage-kind-list)
   (:import-from :clw-shinobi-hashiri/game/parameter
                 :get-param
@@ -41,7 +42,8 @@ If the entity is deleted, the func is also deleted"
 ;; --- stage manager --- ;;
 
 (defstruct.ps+ stage-manager
-    stage-info)
+    stage-info
+  (scroll-speed-scale 1))
 
 (defun.ps+ get-max-id-wall (ground)
   (let (max-id result)
@@ -113,10 +115,20 @@ If the entity is deleted, the func is also deleted"
 (defun.ps+ find-ground ()
   (find-a-entity-by-tag :ground))
 
+(defun.ps+ get-stage-manager (ground)
+  (check-entity-tags ground :ground)
+  (get-entity-param ground :stage-manager))
+
 (defun.ps+ get-scroll-speed (&optional (ground (find-ground)))
-  (let* ((manager (get-entity-param ground :stage-manager))
+  (let* ((manager (get-stage-manager ground))
          (info (stage-manager-stage-info manager)))
-    (funcall (stage-info-fn-get-scroll-speed info) info)))
+    (* (funcall (stage-info-fn-get-scroll-speed info) info)
+       (stage-manager-scroll-speed-scale manager))))
+
+(defun.ps+ set-scroll-speed-scale (value &optional (ground (find-ground)))
+  (let ((manager (get-stage-manager ground)))
+    (setf (stage-manager-scroll-speed-scale manager)
+          value)))
 
 (defun.ps+ get-wall-info (wall-entity)
   (let ((wall-cmp (get-ecs-component 'wall wall-entity)))

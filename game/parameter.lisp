@@ -39,7 +39,8 @@
               :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
                       :back-speed #lx0.4)
               :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4)
-              :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20))
+              :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20)
+              :climb (:scroll-speed-scale 0.8))
     :gravity (:accell #ly0.45 :max-speed 20)
     :score-board (:x #lx990 :y #ly990
                   :current-score (:font-size 20 :y #ly-35)
