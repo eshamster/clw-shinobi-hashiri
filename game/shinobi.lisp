@@ -360,7 +360,8 @@
           (when (and (< height (get-bottom shinobi))
                      (null (game-state-manager-next-state state-manager)))
             (set-entity-param shinobi :on-ground-p nil)
-            (set-scroll-speed-scale 1)
+            (set-scroll-speed-scale
+             (get-param :shinobi :glide-after-climb :scroll-speed-scale))
             (with-ecs-components (speed-2d) shinobi
               (interrupt-game-state
                (make-gliding-state :shinobi shinobi
@@ -371,7 +372,8 @@
                                    :y-speed (get-param :shinobi :glide-after-climb :y-speed))
                state-manager)))))
     (when (out-of-screen-p shinobi)
-      (set-scroll-speed-scale 1)
+      (set-scroll-speed-scale
+       (get-param :shinobi :after-revive :scroll-speed-scale))
       (with-slots (x y) (get-ecs-component 'point-2d shinobi)
         (setf x (get-param :shinobi :on-ground :default-x)
               y (+ (get-param :field :height) #ly20)))

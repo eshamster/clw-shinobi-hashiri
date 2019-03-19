@@ -43,7 +43,7 @@ If the entity is deleted, the func is also deleted"
 
 (defstruct.ps+ stage-manager
     stage-info
-  (scroll-speed-scale 1))
+  (scroll-changer (init-scroll-changer)))
 
 (defun.ps+ get-max-id-wall (ground)
   (let (max-id result)
@@ -110,6 +110,43 @@ If the entity is deleted, the func is also deleted"
             (add-ecs-entity-to-buffer new-wall-entity ground)
             (generate-required-walls ground new-wall-entity)))))))
 
+;; --- scroll scale --- ;;
+
+(defstruct.ps+ scroll-change-target
+  to-scale
+  rest-time)
+
+(defstruct.ps+ scroll-changer
+    (scroll-scale 1)
+  (target-list (list)))
+
+(defun.ps+ init-scroll-changer ()
+  (make-scroll-changer))
+
+(defun.ps+ reset-scroll-changer (scroll-changer
+                                 pairs-of-target-scale-and-duration)
+  (setf (scroll-changer-target-list scroll-changer)
+        (mapcar (lambda (pair)
+                  (let ((target-scale (car pair))
+                        (duration (cadr pair)))
+                    (make-scroll-change-target
+                     :to-scale target-scale
+                     :rest-time duration)))
+                pairs-of-target-scale-and-duration)))
+
+(defun.ps+ update-scroll-changer (scroll-changer)
+  (with-slots (scroll-scale target-list) scroll-changer
+    (when (= (length target-list) 0)
+      (return-from update-scroll-changer))
+    (with-slots (to-scale rest-time) (car target-list)
+      (if (> rest-time 0)
+          (setf scroll-scale (+ scroll-scale
+                                (/ (- to-scale scroll-scale)
+                                   (1+ rest-time)))
+                rest-time (1- rest-time))
+          (setf scroll-scale to-scale
+                target-list (cdr target-list))))))
+
 ;; --- gound --- ;;
 
 (defun.ps+ find-ground ()
@@ -119,16 +156,20 @@ If the entity is deleted, the func is also deleted"
   (check-entity-tags ground :ground)
   (get-entity-param ground :stage-manager))
 
+(defun.ps+ get-scroll-changer (ground)
+  (stage-manager-scroll-changer (get-stage-manager ground)))
+
 (defun.ps+ get-scroll-speed (&optional (ground (find-ground)))
   (let* ((manager (get-stage-manager ground))
          (info (stage-manager-stage-info manager)))
     (* (funcall (stage-info-fn-get-scroll-speed info) info)
-       (stage-manager-scroll-speed-scale manager))))
+       (scroll-changer-scroll-scale
+        (get-scroll-changer ground)))))
 
-(defun.ps+ set-scroll-speed-scale (value &optional (ground (find-ground)))
-  (let ((manager (get-stage-manager ground)))
-    (setf (stage-manager-scroll-speed-scale manager)
-          value)))
+(defun.ps+ set-scroll-speed-scale (scale-and-duration-pairs
+                                   &optional (ground (find-ground)))
+  (reset-scroll-changer (get-scroll-changer ground)
+                        scale-and-duration-pairs))
 
 (defun.ps+ get-wall-info (wall-entity)
   (let ((wall-cmp (get-ecs-component 'wall wall-entity)))
@@ -233,6 +274,8 @@ If the entity is deleted, the func is also deleted"
                              (generate-required-walls entity)
                              (scroll-ground entity)
                              (process-stage-info entity)
+                             (update-scroll-changer
+                              (get-scroll-changer entity))
                              (debug-ground entity)))
      (init-entity-params :on-scroll (make-hash-table)
                          :stage-manager stage-manager))

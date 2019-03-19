@@ -39,9 +39,12 @@
               :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
                       :back-speed #lx0.4)
               :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4
-                                  :adding-scale-y-speed-to-x 0.1)
+                                  :adding-scale-y-speed-to-x 0.1
+                                  :scroll-speed-scale '((1.2 4) (1 30)))
               :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20)
-              :climb (:scroll-speed-scale 0.8))
+              ;; Note: speed-scale = '((scale duration) (scale duration) ...)
+              :climb (:scroll-speed-scale '((1.2 4) (0.8 4) (1 50)))
+              :after-revive (:scroll-speed-scale '((0.5 60) (1 60))))
     :gravity (:accell #ly0.45 :max-speed 20)
     :score-board (:x #lx990 :y #ly990
                   :current-score (:font-size 20 :y #ly-35)
