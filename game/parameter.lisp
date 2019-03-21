@@ -33,12 +33,11 @@
     :shinobi (:width #ly40 :height #ly40
               :death-margin (:x-ratio 2.0 :y-ratio 1.0)
               ;; - state params - ;;
-              :jump (:speed 5 :max-time 18)
-              :on-ground (:default-x #lx300 :return-speed #lx5)
-              ;; TODO: Speed to y direction should be specified by #ly instead of #lx
-              :glide (:gravity-rate 0.15 :first-y-speed #lx2.1 :max-fall-speed #lx3.5
-                      :back-speed #lx0.4)
-              :glide-after-climb (:x-speed #lx0.8 :y-speed #ly4
+              :jump (:speed #ly9 :max-time 18)
+              :on-ground (:default-x #lx400 :return-speed #lx6)
+              :glide (:gravity-rate 0.15 :first-y-speed #ly2.8 :max-fall-speed #ly4
+                      :back-speed #lx0.8)
+              :glide-after-climb (:x-speed #lx0.8 :y-speed #ly2.5
                                   :adding-scale-y-speed-to-x 0.1
                                   :scroll-speed-scale '((1.2 4) (1 30)))
               :climb-jump (:min-speed #lx10 :max-speed #lx8 :duration 20)

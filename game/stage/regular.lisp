@@ -23,25 +23,25 @@
     (convert-to-layered-hash
      (:height (:min #ly50 :max #ly800
                :diff (:min #ly50 :max #ly500))
-      :width (:min #lx30 :max #lx400)
+      :width (:min #lx70 :max #lx400)
       :hole (:ratio 0.3 :min #lx80 :max #lx300)
-      :scroll (:first #lx4 :max #lx8.5 :accell #lx0.005))))
+      :scroll (:first #lx4 :max #lx9 :accell #lx0.1))))
 
 (defvar.ps+ *needle-generator-params*
     (convert-to-layered-hash
      (:height (:min #ly300 :max #ly800
-               :diff (:min #ly50 :max #ly500))
+               :diff (:min #ly100 :max #ly500))
       :width (:min #lx30 :max #lx30)
       :hole (:ratio 1 :min #lx150 :max #lx350)
-      :scroll (:first #lx4 :max #lx7.5 :accell #lx0.005))))
+      :scroll (:first #lx4 :max #lx8.5 :accell #lx0.005))))
 
 (defvar.ps+ *big-hole-generator-params*
     (convert-to-layered-hash
-     (:height (:min #ly200 :max #ly800
-               :diff (:min #ly100 :max #ly500))
-      :width (:min #lx100 :max #lx400)
-      :hole (:ratio 0.5 :min #lx300 :max #lx800)
-      :scroll (:first #lx4 :max #lx7 :accell #lx0.0025))))
+     (:height (:min #ly200 :max #ly900
+               :diff (:min #ly100 :max #ly600))
+      :width (:min #lx200 :max #lx600)
+      :hole (:ratio 0.6 :min #lx300 :max #lx800)
+      :scroll (:first #lx6 :max #lx10 :accell #lx0.01))))
 
 (defstruct.ps+
     (random-stage-info
